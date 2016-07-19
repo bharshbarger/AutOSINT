@@ -49,6 +49,7 @@ parser.add_argument("-a", "--all", help="run all queries", action='store_true')
 parser.add_argument("-w", "--whois", help="query whois", action='store_true')
 parser.add_argument("-n", "--nslookup",help="query DNS", action='store_true')
 parser.add_argument("-g", "--google",help="query Google", action='store_true')
+parser.add_argument("-s", "--shodan", nargs='+',help="query Shodan with -s <apikey>")
 args = parser.parse_args()
 
 #set all if all is set, lol
@@ -67,7 +68,7 @@ if (args.domain and args.ipaddress):
 	parser.error(colors.red+'Only one argument at a time'+colors.normal)
 
 #if no queries defined, exit
-if (args.whois is False and args.nslookup is False and args.google is False):
+if (args.whois is False and args.nslookup is False and args.google is False and args.shodan is False):
 	print colors.red+"No options specified, use -h or --help for a list"+colors.normal
 	exit()
 
@@ -111,15 +112,64 @@ if args.google is True:
 	for url in search('password site:' +lookup, stop=20):
 		print(url)
 		googleOutput.append(url)
+
+
 		
+#ref this https://shodan.readthedocs.io/en/latest/tutorial.html#connect-to-the-api
+#returns json
+if args.shodan is not None:
+	print colors.green+"\nQuerying Shodan\n"+colors.normal
+	SHODAN_API_KEY = args.shodan
+
+	api = shodan.Shodan(SHODAN_API_KEY)
+
+	'''
+	try:
+		# Search Shodan
+		results = api.search('apache')
+
+		# Show the results
+		print 'Results found: %s' % results['total']
+		for result in results['matches']:
+		        print 'IP: %s' % result['ip_str']
+		        print result['data']
+		        print ''
+	except shodan.APIError, e:
+	    print 'Error: %s' % e
+	'''
+
+	try:
+	# Lookup the host
+		host = api.host(lookup)
+
+		# Print general info
+		print """
+		        IP: %s
+		        Organization: %s
+		        Operating System: %s
+		""" % (host['ip_str'], host.get('org', 'n/a'), host.get('os', 'n/a'))
+
+		# Print all banners
+		for item in host['data']:
+		        print """
+		                Port: %s
+		                Banner: %s
+
+		        """ % (item['port'], item['data'])
+	except shodan.APIError, e:
+		print 'Error: %s' % e
+
+
+
 
 #dump to a word doc
 doc = docx.Document()
 doc.add_paragraph('Sample Output')
 doc.add_paragraph('Google search for the word password')
-#doc.add_paragraph(googleOutput)
+doc.add_paragraph(googleOutput)
 doc.add_paragraph(whoisOutput)
 doc.add_paragraph(dnsOutput)
+doc.add_paragraph(shodanOutput)
 doc.save('OSINT.docx')
 
 exit()
