@@ -16,7 +16,9 @@ import subprocess
 import dns.resolver
 import urllib2
 import shodan
+import docx
 
+#python-docx: https://pypi.python.org/pypi/python-docx
 #shodan: https://github.com/achillean/shodan-python
 #google: https://pypi.python.org/pypi/google
 
@@ -49,9 +51,9 @@ if (args.domain and args.ipaddress):
 
 #check to see if an ip or domain name was entered
 if (args.domain):
-	lookup=str(args.domain)
+	lookup=args.domain
 else:
-	lookup=str(args.ipaddress)
+	lookup=args.ipaddress
 
 #check module dependencies
 modulename = 'shodan'
@@ -60,16 +62,26 @@ if modulename not in sys.modules:
 else:
 	print colors.green+'\n all module dependencies found \n'+colors.normal
     
-
-print "Searching Sources for: "  + str(lookup)
+# only grabs first entry for now
+print "Searching Sources for: "  + lookup[0]
+lookup = str(lookup[0])
 
 
 #whois query, dumps out a list
-whoisProcess = subprocess.Popen(["whois", lookup], stdout=subprocess.PIPE)
+whoisProcess = subprocess.Popen(["whois",lookup], stdout=subprocess.PIPE)
 whoisOutput = whoisProcess.communicate()[0].split('\n')
 print (whoisOutput)
 
 #DNS query, dumps out a list
-dnsProcess = subprocess.Popen(["nslookup", lookup], stdout=subprocess.PIPE)
+dnsProcess = subprocess.Popen(["host",lookup], stdout=subprocess.PIPE)
 dnsOutput = dnsProcess.communicate()[0].split('\n')
 print (dnsOutput)
+
+
+
+#dump to a word doc
+doc = docx.Document()
+doc.add_paragraph('Sample Output')
+doc.add_paragraph(whoisOutput)
+doc.add_paragraph(dnsOutput)
+doc.save('OSINT.docx')
