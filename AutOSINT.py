@@ -5,16 +5,20 @@
 #unum alces!
 
 # poll various OSINT sources for data, write to .doc
-# dns
-# shodan
+# whois - added
+# dns - added
+# shodan - added
 # scrape pastebin, etc
 # google dorks via googlesearch 
+# BGP info
+# AS info
+# linkedin (from Nick)
+
 
 import sys
 import argparse
 import subprocess
 import dns.resolver
-#import urllib2
 import shodan
 import docx
 from google import search
@@ -61,7 +65,7 @@ print args
 
 #require at least one argument
 if not (args.domain or args.ipaddress):
-    parser.error('No action requested, add domain or IP address')
+    parser.error(colors.red+"No action requested, add domain(s) or IP address(es)"+colors.normal)
 
 #only allow one of ip or domain
 if (args.domain and args.ipaddress):
@@ -114,52 +118,28 @@ if args.google is True:
 		googleOutput.append(url)
 
 
-		
+#probably need to customize search type based on -i or -d		
 #ref this https://shodan.readthedocs.io/en/latest/tutorial.html#connect-to-the-api
 #returns json
+shodanOutput=[]
 if args.shodan is not None:
 	print colors.green+"\nQuerying Shodan\n"+colors.normal
 	SHODAN_API_KEY = args.shodan
 
 	api = shodan.Shodan(SHODAN_API_KEY)
 
-	'''
-	try:
-		# Search Shodan
-		results = api.search('apache')
 
-		# Show the results
-		print 'Results found: %s' % results['total']
-		for result in results['matches']:
-		        print 'IP: %s' % result['ip_str']
-		        print result['data']
-		        print ''
-	except shodan.APIError, e:
-	    print 'Error: %s' % e
-	'''
+	# Search Shodan
+	results = api.search(lookup)
+	# Show the results
+	print 'Results found: %s' % results['total']
+	for result in results['matches']:
+		print 'IP: %s' % result['ip_str']
+		print result['data']
+		shodanOutput.append(str(results))
+			
 
-	try:
-	# Lookup the host
-		host = api.host(lookup)
-
-		# Print general info
-		print """
-		        IP: %s
-		        Organization: %s
-		        Operating System: %s
-		""" % (host['ip_str'], host.get('org', 'n/a'), host.get('os', 'n/a'))
-
-		# Print all banners
-		for item in host['data']:
-		        print """
-		                Port: %s
-		                Banner: %s
-
-		        """ % (item['port'], item['data'])
-	except shodan.APIError, e:
-		print 'Error: %s' % e
-
-
+	
 
 
 #dump to a word doc
