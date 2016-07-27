@@ -1,4 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+
+#By @arbitrary_code
 
 #Special thanks to:
 #Nick Sanzotta, for helping with general coding expertise
@@ -8,11 +10,12 @@
 # whois - added
 # dns - added
 # shodan - added
-# scrape pastebin, etc
-# google dorks via googlesearch 
-# BGP info
-# AS info
+# scrape pastebin, etc.
+# google dorks via googlesearch. only does "password site:domain now"
+# BGP info - todo
+# AS info - todo
 # linkedin (from Nick)
+# read pw/keys from github
 
 
 import sys
@@ -22,134 +25,218 @@ import dns.resolver
 import shodan
 import docx
 from google import search
+from termcolor import colored
+import socket
 
 #python-docx: https://pypi.python.org/pypi/python-docx
 #shodan: https://github.com/achillean/shodan-python
 #google: https://pypi.python.org/pypi/google, also installs beautifulsoup
 
-class colors:
-   white = "\033[1;37m"
-   normal = "\033[0;00m"
-   red = "\033[1;31m"
-   blue = "\033[1;34m"
-   green = "\033[1;32m"
+#*******************************************************************************
 
-banner = '\n ' + "-" * 85 + colors.green + '\n  AutOSINT.py v0.1, a way to do some automated OSINT tasks\n ' + colors.normal + "-" * 85 + "\n"
+def main():
 
-print banner
+	print colored('''
+    _         _    ___  ____ ___ _   _ _____ 
+   / \  _   _| |_ / _ \/ ___|_ _| \ | |_   _|
+  / _ \| | | | __| | | \___ \| ||  \| | | |  
+ / ___ \ |_| | |_| |_| |___) | || |\  | | |  
+/_/   \_\__,_|\__|\___/|____/___|_| \_| |_|\n''')
 
-#check module dependencies
-modulename = 'shodan'
-if modulename not in sys.modules:
-    print colors.red+'\n !!!You have not imported the {} module!!!'.format(modulename) +'\n'+colors.normal
-else:
-	print colors.green+'\n all module dependencies found \n'+colors.normal
+	print colored('AutOSINT.py v0.1, a way to do some automated OSINT tasks\n', 'green')
 
-#parse input, nargs allows one or more to be entered
-parser = argparse.ArgumentParser()
-parser.add_argument("-d","--domain", nargs='+', help="the domain(s) you want to search")
-parser.add_argument("-i", "--ipaddress", nargs='+', help="the IP address(es) you want to search")
-parser.add_argument("-a", "--all", help="run all queries", action='store_true')
-parser.add_argument("-w", "--whois", help="query whois", action='store_true')
-parser.add_argument("-n", "--nslookup",help="query DNS", action='store_true')
-parser.add_argument("-g", "--google",help="query Google", action='store_true')
-parser.add_argument("-s", "--shodan", nargs='+',help="query Shodan with -s <apikey>")
-args = parser.parse_args()
+	#check module dependencies
+	moduleDependencies = ('shodan','termcolor','google','docx','shodan')
+	for m in moduleDependencies:
+		if m not in sys.modules:
+		    print colored('!!!You have not imported the' + m + 'module!!!', 'red')
+		else:
+			print colored('[+] ' + m + 'module dependency found', 'green')
 
-#set all if all is set, lol
-if args.all is True:
-	args.whois = True
-	args.nslookup = True
-	args.google = True
-print args
+	#parse input, nargs allows one or more to be entered
+	parser = argparse.ArgumentParser()
+	parser.add_argument('-d','--domain', nargs = '+', help = 'the Domain(s) you want to search')
+	parser.add_argument('-i', '--ipaddress', nargs = '+', help = 'the IP address(es) you want to search')
+	parser.add_argument('-a', '--all', help = 'run All queries', action = 'store_true')
+	parser.add_argument('-w', '--whois', help = 'query Whois', action = 'store_true')
+	parser.add_argument('-n', '--nslookup',help = 'Name query DNS', action = 'store_true')
+	parser.add_argument('-g', '--google',help = 'query Google', action = 'store_true')
+	parser.add_argument('-s', '--shodan', nargs = '?', help = 'query Shodan, optionally provide -s <apikey>')
+	parser.add_argument('-v', '--verbose', help = 'Verbosely everything to stdout, equivalent to -wngs', action = 'store_true')
+	args = parser.parse_args()
+	print args
 
-#require at least one argument
-if not (args.domain or args.ipaddress):
-    parser.error(colors.red+"No action requested, add domain(s) or IP address(es)"+colors.normal)
-
-#only allow one of ip or domain
-if (args.domain and args.ipaddress):
-	parser.error(colors.red+'Only one argument at a time'+colors.normal)
-
-#if no queries defined, exit
-if (args.whois is False and args.nslookup is False and args.google is False and args.shodan is False):
-	print colors.red+"No options specified, use -h or --help for a list"+colors.normal
-	exit()
-
-#check to see if an ip or domain name was entered
-if (args.domain):
-	lookup=args.domain
-else:
-	lookup=args.ipaddress
-
-# only grabs first entry for now
-print colors.green+"\nSearching Sources for: "  + lookup[0]+colors.normal
-lookup = str(lookup[0])
+	#set all
+	
+	if args.all is True:
+		args.whois = True
+		args.nslookup = True
+		args.google = True
 
 
 
-#probably just need a function to pass in arguments and conditionally run queries instead of 1000 if statements
-#
-#whois query, dumps out a list
-if args.whois is True:
-	whoisProcess = subprocess.Popen(["whois",lookup], stdout=subprocess.PIPE)
-	whoisOutput = whoisProcess.communicate()[0].split('\n')
-	print colors.green+"\nQuerying whois\n"+colors.normal
-	print (whoisOutput)
-else:
-	whoisOutput="no whois performed"
+	#validate entered IP address? do we even care? i and d do the same shit
+	if args.ipaddress is not None:
+		for a in args.ipaddress:
+			try:
+				socket.inet_aton(a)
+			except socket.error:
+				print colored("[-] Invalid IP entered! ", 'red') + a
+
+	#require at least one argument
+	if not (args.domain or args.ipaddress):
+	    parser.error('No action requested, add domain(s) or IP address(es)\n')
+
+	#if no queries defined, exit
+	if (args.whois is False and args.nslookup is False and args.google is False and args.shodan is False):
+		print colored('No options specified, use -h or --help for a list', 'red')
+		exit()
 
 
-#DNS query, dumps out a list
-if args.nslookup is True:
-	dnsProcess = subprocess.Popen(['host','-a',lookup], stdout=subprocess.PIPE)
-	dnsOutput = dnsProcess.communicate()[0].split('\n')
-	print colors.green+"\nQuerying DNS via host -a\n"+colors.normal
-	print (dnsOutput)
-else:
-	dnsOutput="no dns lookup performed"
+	#check to see if an ip or domain name was entered
+	if args.domain is not None:
+		for d in args.domain:
+			lookup = args.domain
+	else:
+		for i in args.ipaddress:
+			lookup = args.ipaddress
+
+	print "lookup value is "+ str(lookup)
 
 
-googleOutput=[]
-if args.google is True:
-	print colors.green+"\nQuerying google\n"+colors.normal
-	for url in search('password site:' +lookup, stop=20):
-		print(url)
-		googleOutput.append(url)
+
+	# only grabs first entry for now
+	#print colored('Searching Sources for: '  + lookup[0] + '\n')
+	#lookup = str(lookup[0])
+
+	#call functions
 
 
-#probably need to customize search type based on -i or -d		
-#ref this https://shodan.readthedocs.io/en/latest/tutorial.html#connect-to-the-api
-#returns json
-shodanOutput=[]
-if args.shodan is not None:
-	print colors.green+"\nQuerying Shodan\n"+colors.normal
-	SHODAN_API_KEY = args.shodan
 
-	api = shodan.Shodan(SHODAN_API_KEY)
+	if args.whois is True:
+		whoisResultWrite = whois_search(args, lookup)
+	
+	if args.nslookup is True:
+		dnsResultWrite = dns_search(args, lookup)
+	
+	if args.google is True:
+		googleResultWrite = google_serach(args, lookup)
+	
+	if args.shodan is not None:
+		shodanResultWrite = shodan_search(args, lookup)
+	
+	
+	write_report(args, googleResultWrite, whoisResultWrite, dnsResultWrite, shodanResultWrite)
 
+#*******************************************************************************
+#queries whois of ip or domain set in lookup, dumps to stdout if -v is set, writes to file either way
+def whois_search(args, lookup):
+
+
+
+	whoisResult = []
+
+	#iterate the index and values of the lookup list
+	for i, l in enumerate(lookup):
+		print colored ('Performing whois query ' + str(i + 1) + ' for ' + l, 'blue')
+		
+		#subprocess open the whois command for current value of "l" in lookup list. 
+		#split into newlines instead of commas
+		whoisResult = subprocess.Popen(['whois',l], stdout = subprocess.PIPE).communicate()[0].split('\n')
+
+		#append lists together
+		whoisResult.append(str(whoisResult))
+
+		#verbose logic
+		if args.verbose is True:
+			print whoisResult
+
+	return whoisResult
+#*******************************************************************************
+def dns_search(args, lookup):
+	
+	#DNS query, dumps out a list
+	
+	dnsResult = []
+	#iterate the index and values of the lookup list
+	for i, l in enumerate(lookup):
+		print colored('Performing DNS query ' + str(i + 1) + ' for ' + l, 'blue')
+		
+		#subprocess to run host -a on the current value of l in the loop, split into newlines
+		dnsResult = subprocess.Popen(['host','-a', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\n')
+
+		#append lists together
+		dnsResult.append(str(dnsResult))
+
+
+		#print dnsResult
+		if args.verbose is True:
+			print dnsResult
+		#verbose logic
+
+
+	#return list object
+	return dnsResult
+
+
+
+#*******************************************************************************
+#this could be GREATLY improved
+def google_serach(args, lookup):
+
+	googleResult = []
+
+	for i, l in enumerate(lookup):
+		print colored('Google query ' + str(i + 1) + ' for "password site:' + l, 'blue')
+		for url in search('password site:' + l, stop = 20):
+			if args.verbose is True:
+				print(url)
+			googleResult.append(str(url))
+
+	return googleResult
+
+#*******************************************************************************
+def shodan_search(args, lookup):
+	#probably need to customize search type based on -i or -d		
+	#ref this https://shodan.readthedocs.io/en/latest/tutorial.html#connect-to-the-api
+	#returns json
+
+	shodanResult = []
+	#list that we'll return
+
+	shodanApiKey = args.shodan
+	shodanApi = shodan.Shodan(shodanApiKey)
+	print shodanApiKey
 
 	# Search Shodan
-	results = api.search(lookup)
-	# Show the results
-	print 'Results found: %s' % results['total']
-	for result in results['matches']:
-		print 'IP: %s' % result['ip_str']
-		print result['data']
-		shodanOutput.append(str(results))
-			
-
+	if shodanApiKey is not None:
+		
+		for i, l in enumerate(lookup):
+			print colored('Querying Shodan via API search for ' + l, 'blue')
+			results = shodanApi.search(lookup)
+			if args.verbose is True:
+				print 'Results found: %s' % results['total']
+				for result in results['matches']:
+					print 'IP: %s' % result['ip_str']
+					print result['data']
+					shodanResult.append(str(results))
 	
+	return shodanResult
+			
+#*******************************************************************************
+def write_report(args, googleResult, whoisResult, dnsResult, shodanResult):
 
 
-#dump to a word doc
-doc = docx.Document()
-doc.add_paragraph('Sample Output')
-doc.add_paragraph('Google search for the word password')
-doc.add_paragraph(googleOutput)
-doc.add_paragraph(whoisOutput)
-doc.add_paragraph(dnsOutput)
-doc.add_paragraph(shodanOutput)
-doc.save('OSINT.docx')
+	print colored('Writing results of your query options for to a .docx into the current directory', 'yellow')
+	#dump to a word doc
+	doc = docx.Document()
+	doc.add_paragraph('Sample Output')
+	doc.add_paragraph('Google search for the word password')
+	doc.add_paragraph(googleResult)
+	doc.add_paragraph(whoisResult)
+	doc.add_paragraph(dnsResult)
+	doc.add_paragraph(shodanResult)
+	doc.save('OSINT.docx')
 
-exit()
+if __name__ == '__main__':
+    main()
