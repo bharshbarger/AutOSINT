@@ -3,21 +3,10 @@ Tool to automate common osint tasks
 
 A project to try to automate some common things checked during open source intelligence gathering engagements.
 
+Right now it can do name lookups via -n, whois via -w Google search for 'password' with 'site:<ip or domain>' and Shodan which currently requires an API key to function properly.
+
 
 usage: AutOSINT.py [-h] [-d DOMAIN [DOMAIN ...]]
                    [-i IPADDRESS [IPADDRESS ...]] [-a] [-w] [-n] [-g]
                    [-s [SHODAN]] [-v]
 
-optional arguments:
-  -h, --help            show this help message and exit
-  -d DOMAIN [DOMAIN ...], --domain DOMAIN [DOMAIN ...]
-                        the Domain(s) you want to search
-  -i IPADDRESS [IPADDRESS ...], --ipaddress IPADDRESS [IPADDRESS ...]
-                        the IP address(es) you want to search
-  -a, --all             run All queries
-  -w, --whois           query Whois
-  -n, --nslookup        Name query DNS
-  -g, --google          query Google
-  -s [SHODAN], --shodan [SHODAN]
-                        query Shodan, optionally provide -s <apikey>
-  -v, --verbose         Verbosely everything to stdout, equivalent to -wngs
