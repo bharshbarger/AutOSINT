@@ -126,7 +126,7 @@ def main():
 		shodanResultWrite = shodan_search(args, lookup)
 	
 	
-	write_report(args, googleResultWrite, whoisResultWrite, dnsResultWrite, shodanResultWrite)
+	#write_report(args, googleResultWrite, whoisResultWrite, dnsResultWrite, shodanResultWrite)
 
 #*******************************************************************************
 #queries whois of ip or domain set in lookup, dumps to stdout if -v is set, writes to file either way
