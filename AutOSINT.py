@@ -16,17 +16,19 @@
 # AS info - todo
 # linkedin (from Nick)
 # read pw/keys from github
-
+# accept cidr input - todo
 
 import sys
 import argparse
 import subprocess
 import dns.resolver
+import socket
+import urllib2
 import shodan
 import docx
 from google import search
 from termcolor import colored
-import socket
+
 
 #python-docx: https://pypi.python.org/pypi/python-docx
 #shodan: https://github.com/achillean/shodan-python
@@ -103,128 +105,152 @@ def main():
 
 	print "lookup value is "+ str(lookup)
 
-
-
-	# only grabs first entry for now
-	#print colored('Searching Sources for: '  + lookup[0] + '\n')
-	#lookup = str(lookup[0])
-
-	#call functions
-
-
-
-	if args.whois is True:
-		whoisResultWrite = whois_search(args, lookup)
-	
-	if args.nslookup is True:
-		dnsResultWrite = dns_search(args, lookup)
-	
-	if args.google is True:
-		googleResultWrite = google_serach(args, lookup)
-	
-	if args.shodan is not None:
-		shodanResultWrite = shodan_search(args, lookup)
-	
-	
-	#write_report(args, googleResultWrite, whoisResultWrite, dnsResultWrite, shodanResultWrite)
+	#call functions if flag set
+	whoisResultWrite = whois_search(args, lookup)
+	dnsResultWrite = dns_search(args, lookup)
+	googleResultWrite = google_search(args, lookup)
+	shodanResultWrite = shodan_search(args, lookup)
+	write_report(args, googleResultWrite, whoisResultWrite, dnsResultWrite, shodanResultWrite)
 
 #*******************************************************************************
 #queries whois of ip or domain set in lookup, dumps to stdout if -v is set, writes to file either way
 def whois_search(args, lookup):
 
+	if args.whois is True:
 
+		whoisResult = []
 
-	whoisResult = []
+		#iterate the index and values of the lookup list
+		for i, l in enumerate(lookup):
+			print colored ('Performing whois query ' + str(i + 1) + ' for ' + l, 'blue')
+			
+			#subprocess open the whois command for current value of "l" in lookup list. 
+			#split into newlines instead of commas
+			whoisCmd = subprocess.Popen(['whois',l], stdout = subprocess.PIPE).communicate()[0].split('\n')
 
-	#iterate the index and values of the lookup list
-	for i, l in enumerate(lookup):
-		print colored ('Performing whois query ' + str(i + 1) + ' for ' + l, 'blue')
-		
-		#subprocess open the whois command for current value of "l" in lookup list. 
-		#split into newlines instead of commas
-		whoisResult = subprocess.Popen(['whois',l], stdout = subprocess.PIPE).communicate()[0].split('\n')
+			#append lists together
+			whoisResult.append(whoisCmd)
 
-		#append lists together
-		whoisResult.append(str(whoisResult))
+			#verbose logic
+			if args.verbose is True:
+				for w in whoisResult: print '\n'.join(w)
 
-		#verbose logic
-		if args.verbose is True:
-			print whoisResult
-
-	return whoisResult
+		return whoisResult
 #*******************************************************************************
 def dns_search(args, lookup):
 	
 	#DNS query, dumps out a list
 	
-	dnsResult = []
-	#iterate the index and values of the lookup list
-	for i, l in enumerate(lookup):
-		print colored('Performing DNS query ' + str(i + 1) + ' for ' + l, 'blue')
-		
-		#subprocess to run host -a on the current value of l in the loop, split into newlines
-		dnsResult = subprocess.Popen(['host','-a', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\n')
+		if args.nslookup is True:
 
-		#append lists together
-		dnsResult.append(str(dnsResult))
+			#init list
+			dnsResult = []
+			#iterate the index and values of the lookup list
+			for i, l in enumerate(lookup):
+				print colored('Performing DNS query ' + str(i + 1) + ' for ' + l, 'blue')
+				
+				#subprocess to run host  on the current value of l in the loop, split into newlines
+				dnsCmd = subprocess.Popen(['host', '-a', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\n')
 
+				#append lists together
+				dnsResult.append(dnsCmd)
 
-		#print dnsResult
-		if args.verbose is True:
-			print dnsResult
-		#verbose logic
+				#print dnsResult if -v
+				if args.verbose is True:
+					for d in dnsResult: print '\n'.join(d)
+				#verbose logic
 
-
-	#return list object
-	return dnsResult
-
-
+			#return list object
+			return dnsResult
 
 #*******************************************************************************
-#this could be GREATLY improved
-def google_serach(args, lookup):
+#this could be GREATLY improved. perhaps clone GHDB dorks to a file and iterate?
+# GHDB password dorks https://www.exploit-db.com/google-hacking-database/9/
+# GHDB sensitive dirs https://www.exploit-db.com/google-hacking-database/3/
 
-	googleResult = []
+def google_search(args, lookup):
 
-	for i, l in enumerate(lookup):
-		print colored('Google query ' + str(i + 1) + ' for "password site:' + l, 'blue')
-		for url in search('password site:' + l, stop = 20):
-			if args.verbose is True:
-				print(url)
-			googleResult.append(str(url))
+	if args.google is True:
 
-	return googleResult
+		#init list
+		googleResult = []
+
+			
+
+		#iterate the lookup list
+		for i, l in enumerate(lookup):
+			#show user whiat is being searched
+			print colored('Google query ' + str(i + 1) + ' for " password site:' + l + ' "', 'blue')
+			
+			try:
+				#iterate url results from search of password(for now) and site:current list value
+				for url in search('password site:' + l, stop = 20):
+					
+					#append results together
+					googleResult.append(url)
+			except Exception:
+				pass
+
+		#verbosity flag
+		if args.verbose is True:
+			for r in googleResult: print ''.join(r)
+				
+		#return results list
+		return googleResult
 
 #*******************************************************************************
 def shodan_search(args, lookup):
 	#probably need to customize search type based on -i or -d		
-	#ref this https://shodan.readthedocs.io/en/latest/tutorial.html#connect-to-the-api
-	#returns json
+	#first if  https://shodan.readthedocs.io/en/latest/tutorial.html#connect-to-the-api
+	#else https://shodan.readthedocs.io/en/latest/tutorial.html#looking-up-a-host
 
 	shodanResult = []
 	#list that we'll return
 
 	shodanApiKey = args.shodan
 	shodanApi = shodan.Shodan(shodanApiKey)
-	print shodanApiKey
 
-	# Search Shodan
+	# If theres an api key via -s
 	if shodanApiKey is not None:
-		
+		#roll through the lookup list from -i or -d
 		for i, l in enumerate(lookup):
 			print colored('Querying Shodan via API search for ' + l, 'blue')
-			results = shodanApi.search(lookup)
-			if args.verbose is True:
-				print 'Results found: %s' % results['total']
-				for result in results['matches']:
-					print 'IP: %s' % result['ip_str']
-					print result['data']
-					shodanResult.append(str(results))
-	
+			try:
+				results = shodanApi.search(l)
+				if args.verbose is True:
+					print 'Results found: %s' % results['total']
+					for result in results['matches']:
+						print 'IP: %s' % result['ip_str']
+						print result['data']
+						shodanResult.append(str(results))
+			except shodan.APIError, e:
+				print 'Error %s' % e
 	return shodanResult
-			
+	
+
+	
+
 #*******************************************************************************
-def write_report(args, googleResult, whoisResult, dnsResult, shodanResult):
+def write_report(args, googleResultWrite, whoisResultWrite, dnsResultWrite, shodanResultWrite):
+	
+	google = "No Google Results"
+
+
+	if whoisResultWrite is not None:
+		for w in whoisResultWrite: whois = (''.join(w))
+	else:
+		whois = "No Whois results"
+		
+	if googleResultWrite is not None:
+		for r in googleResultWrite: google=(''.join(r))
+	
+			
+	
+	if dnsResultWrite is not None:
+		for d in dnsResultWrite: dns = (''.join(d))
+	else:
+		dns = "no DNS results"
+
 
 
 	print colored('Writing results of your query options for to a .docx into the current directory', 'yellow')
@@ -232,11 +258,18 @@ def write_report(args, googleResult, whoisResult, dnsResult, shodanResult):
 	doc = docx.Document()
 	doc.add_paragraph('Sample Output')
 	doc.add_paragraph('Google search for the word password')
-	doc.add_paragraph(googleResult)
-	doc.add_paragraph(whoisResult)
-	doc.add_paragraph(dnsResult)
-	doc.add_paragraph(shodanResult)
+	doc.add_paragraph(str(google))
+
+	doc.add_paragraph('Whois Results')
+	doc.add_paragraph(str(whois))
+
+	doc.add_paragraph('DNS Lookup Results')
+	doc.add_paragraph(str(dns))
+
+	doc.add_paragraph('Shodan query results')
+	doc.add_paragraph(shodanResultWrite)
 	doc.save('OSINT.docx')
+
 
 if __name__ == '__main__':
     main()
