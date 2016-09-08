@@ -19,6 +19,7 @@
 # accept cidr input - todo
 
 import sys
+import time
 import argparse
 import subprocess
 import dns.resolver
@@ -26,6 +27,8 @@ import socket
 import urllib2
 import shodan
 import docx
+import re
+import os
 from google import search
 from termcolor import colored
 
@@ -47,34 +50,33 @@ def main():
 
 	print colored('AutOSINT.py v0.1, a way to do some automated OSINT tasks\n', 'green')
 
-	#check module dependencies
-	moduleDependencies = ('shodan','termcolor','google','docx','shodan')
-	for m in moduleDependencies:
-		if m not in sys.modules:
-		    print colored('!!!You have not imported the' + m + 'module!!!', 'red')
-		else:
-			print colored('[+] ' + m + 'module dependency found', 'green')
 
 	#parse input, nargs allows one or more to be entered
 	parser = argparse.ArgumentParser()
-	parser.add_argument('-d','--domain', nargs = '+', help = 'the Domain(s) you want to search')
+	parser.add_argument('-d', '--domain', nargs = '+', help = 'the Domain(s) you want to search')
 	parser.add_argument('-i', '--ipaddress', nargs = '+', help = 'the IP address(es) you want to search')
 	parser.add_argument('-a', '--all', help = 'run All queries', action = 'store_true')
 	parser.add_argument('-w', '--whois', help = 'query Whois', action = 'store_true')
 	parser.add_argument('-n', '--nslookup',help = 'Name query DNS', action = 'store_true')
-	parser.add_argument('-g', '--google',help = 'query Google', action = 'store_true')
+	parser.add_argument('-g', '--google',help = 'query Google for passwords', action = 'store_true')
 	parser.add_argument('-s', '--shodan', nargs = '?', help = 'query Shodan, optionally provide -s <apikey>')
-	parser.add_argument('-v', '--verbose', help = 'Verbosely everything to stdout, equivalent to -wngs', action = 'store_true')
+	parser.add_argument('-v', '--verbose', help = 'Verbose', action = 'store_true')
+	parser.add_argument('-p', '--pastebinsearch', help = 'Search pastebin', action = 'store_true')
+	parser.add_argument('-t', '--theharvester', help = 'Invoke theHarvester', action = 'store_true')
+	parser.add_argument('-c', '--creds', help = 'Search local copies of credential dumps', action = 'store_true')
+	parser.add_argument('-f', '--foca', help = 'invoke pyfoca', action = 'store_true')
 	args = parser.parse_args()
 	print args
 
-	#set all
-	
+	#set all if -a
 	if args.all is True:
 		args.whois = True
 		args.nslookup = True
 		args.google = True
-
+		args.shodan = True
+		args.pastebinsearch = True
+		args.theharvester = True
+		args.creds = True
 
 
 	#validate entered IP address? do we even care? i and d do the same shit
@@ -84,16 +86,16 @@ def main():
 				socket.inet_aton(a)
 			except socket.error:
 				print colored("[-] Invalid IP entered! ", 'red') + a
+				sys.exit(1)
 
 	#require at least one argument
 	if not (args.domain or args.ipaddress):
 	    parser.error('No action requested, add domain(s) or IP address(es)\n')
 
 	#if no queries defined, exit
-	if (args.whois is False and args.nslookup is False and args.google is False and args.shodan is False):
+	if (args.whois is False and args.nslookup is False and args.google is False and args.shodan is False and args.pastebinsearch is False):
 		print colored('No options specified, use -h or --help for a list', 'red')
 		exit()
-
 
 	#check to see if an ip or domain name was entered
 	if args.domain is not None:
@@ -105,25 +107,44 @@ def main():
 
 	print "lookup value is "+ str(lookup)
 
-	#call functions if flag set
-	whoisResultWrite = whois_search(args, lookup)
-	dnsResultWrite = dns_search(args, lookup)
-	googleResultWrite = google_search(args, lookup)
-	shodanResultWrite = shodan_search(args, lookup)
-	write_report(args, googleResultWrite, whoisResultWrite, dnsResultWrite, shodanResultWrite)
+
+	potfileDir = './potfile'
+	credLeakDir = './credleaks'
+
+	if not os.path.exists(potfileDir):
+		print './potfile directory missing. create?'
+		os.makedirs(potfileDir)
+
+	if not os.path.exists(credLeakDir):
+		print './credleaks directory missing. create?'
+		os.makedirs(potfileDir)
+
+	#call functions
+	whois_search(args, lookup)
+	dns_search(args, lookup)
+	google_search(args, lookup)
+	shodan_search(args, lookup)
+	pastebin_search(args, lookup)
+	the_harvester(args, lookup)
+	credential_leaks(args, lookup)
+	#write_report(args, googleResultWrite, whoisResultWrite, dnsResultWrite, shodanResultWrite)
 
 #*******************************************************************************
 #queries whois of ip or domain set in lookup, dumps to stdout if -v is set, writes to file either way
 def whois_search(args, lookup):
 
+	#invoke if option set
 	if args.whois is True:
 
+		#init results list
 		whoisResult = []
 
 		#iterate the index and values of the lookup list
 		for i, l in enumerate(lookup):
 			print colored ('Performing whois query ' + str(i + 1) + ' for ' + l, 'blue')
 			
+			whoisFile=open(''.join(l)+'_whois.txt','a')
+
 			#subprocess open the whois command for current value of "l" in lookup list. 
 			#split into newlines instead of commas
 			whoisCmd = subprocess.Popen(['whois',l], stdout = subprocess.PIPE).communicate()[0].split('\n')
@@ -131,34 +152,43 @@ def whois_search(args, lookup):
 			#append lists together
 			whoisResult.append(whoisCmd)
 
-			#verbose logic
+			#write the file
+			for r in whoisResult:
+				whoisFile.writelines(str(r))
+			
+			#verbosity logic
 			if args.verbose is True:
 				for w in whoisResult: print '\n'.join(w)
 
 		return whoisResult
 #*******************************************************************************
 def dns_search(args, lookup):
-	
 	#DNS query, dumps out a list
 	
+		#invoke if option set
 		if args.nslookup is True:
-
-			#init list
+			
+			#init results list
 			dnsResult = []
+			
 			#iterate the index and values of the lookup list
 			for i, l in enumerate(lookup):
-				print colored('Performing DNS query ' + str(i + 1) + ' for ' + l, 'blue')
-				
-				#subprocess to run host  on the current value of l in the loop, split into newlines
+				print colored('Performing DNS query #'+ str(i + 1) + ' using "host -a " ' + l, 'blue')
+				dnsFile=open(''.join(l)+'_dns.txt','a')
+				#subprocess to run host -a on the current value of l in the loop, split into newlines
 				dnsCmd = subprocess.Popen(['host', '-a', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\n')
 
 				#append lists together
 				dnsResult.append(dnsCmd)
 
+				for r in dnsResult:
+					dnsFile.writelines(r)
+
 				#print dnsResult if -v
 				if args.verbose is True:
 					for d in dnsResult: print '\n'.join(d)
 				#verbose logic
+
 
 			#return list object
 			return dnsResult
@@ -167,19 +197,23 @@ def dns_search(args, lookup):
 #this could be GREATLY improved. perhaps clone GHDB dorks to a file and iterate?
 # GHDB password dorks https://www.exploit-db.com/google-hacking-database/9/
 # GHDB sensitive dirs https://www.exploit-db.com/google-hacking-database/3/
+# do all dorks from a file?
 
 def google_search(args, lookup):
 
 	if args.google is True:
-
+		
 		#init list
 		googleResult = []
 
 			
-
 		#iterate the lookup list
 		for i, l in enumerate(lookup):
+			googleFile=open(''.join(l)+'_google.txt','a')
+
 			#show user whiat is being searched
+
+
 			print colored('Google query ' + str(i + 1) + ' for " password site:' + l + ' "', 'blue')
 			
 			try:
@@ -191,6 +225,9 @@ def google_search(args, lookup):
 			except Exception:
 				pass
 
+		for r in googleResult:
+			googleFile.writelines(r + '\r\n')
+
 		#verbosity flag
 		if args.verbose is True:
 			for r in googleResult: print ''.join(r)
@@ -198,20 +235,24 @@ def google_search(args, lookup):
 		#return results list
 		return googleResult
 
+
 #*******************************************************************************
 def shodan_search(args, lookup):
 	#probably need to customize search type based on -i or -d		
 	#first if  https://shodan.readthedocs.io/en/latest/tutorial.html#connect-to-the-api
 	#else https://shodan.readthedocs.io/en/latest/tutorial.html#looking-up-a-host
 
-	shodanResult = []
 	#list that we'll return
+	shodanResult = []
+	
 
 	shodanApiKey = args.shodan
 	shodanApi = shodan.Shodan(shodanApiKey)
 
 	# If theres an api key via -s
 	if shodanApiKey is not None:
+		shodanFile=open(''.join(lookup)+'_shodan.txt','a')
+		print "starting shodan"
 		#roll through the lookup list from -i or -d
 		for i, l in enumerate(lookup):
 			print colored('Querying Shodan via API search for ' + l, 'blue')
@@ -225,12 +266,178 @@ def shodan_search(args, lookup):
 						shodanResult.append(str(results))
 			except shodan.APIError, e:
 				print 'Error %s' % e
+
+	for r in shodanResult:			
+		shodanFile.writelines(''.join(r)+'\r\n')
+
 	return shodanResult
 	
+#*******************************************************************************
 
+#right now this just google dorks
+#need to implement scraping api http://pastebin.com/api_scraping_faq
+def pastebin_search(args, lookup):
+	#init lists
+	scrapeResult = []
+	scrapeContent = []
+	headers = { 'User-Agent' : 'Mozilla/5.0' }
+
+
+
+	if args.pastebinsearch is True:
+		print colored('requires a Pastebin Pro account for IP whitelisting')
+		scraped=open(''.join(lookup)+'_pastebin.txt','a')
+		pasteUrls=open(''.join(lookup)+'_pastebin_urls.txt','a')
+		#iterate the lookup list
+		for i, l in enumerate(lookup):
+			#show user whiat is being searched
+			print colored('Google query #' + str(i + 1) + ' for " password site:pastebin.com ' + l + ' "', 'blue')
+			
+			try:
+				#iterate url results from search of password(for now) and site:current list value
+				for url in search('password OR license OR hacked site:pastebin.com ' + l, stop = 20):
+					time.sleep(1)
+					
+					#append results together
+					scrapeResult.append(url)
+					pasteUrls.writelines(scrapeResult +'\r\n')
+				
+
+					for r in scrapeResult:
+						print "Found " + r
+						
+						try:
+							req = urllib2.Request(r)
+							print colored('Opening ' + r + '', 'blue')
+							scrapeContent = urllib2.urlopen(req).read()
+							#scrapeContent.append()
+							#print scrapeContent
+							scraped.writelines(scrapeResult + '\r\n')
+							scraped.writelines(scrapeContent)
+						except Exception:
+							pass
+			except Exception:
+				pass
+
+		#verbosity flag
+		if args.verbose is True:
+			for r in scrapeResult: print ''.join(r)
+			for c in scrapeContent: print ' '.join(c)
+
+
+		#return results list
+		return scrapeResult
+		return scrapeContent
+
+
+		
+#*******************************************************************************
+def the_harvester(args, lookup):
+
+
+	if args.theharvester is True:
+
+		#init lists
+		harvested = []
+		harvesterGoogleResult = []
+		harvesterLinkedinResult = []
+
+		#based on domain or ip, enumerate with index and value
+		for i, l in enumerate(lookup):
+
+			#open file to write to
+			harvesterFile=open(''.join(l)+'_theharvester.txt','a')
+
+			#run harvester with -b google on lookup
+			harvesterGoogleCmd = subprocess.Popen(['theharvester', '-b', 'google', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
+
+			#run harvester with -b linkedin on lookup
+			harvesterLinkedinCmd = subprocess.Popen(['theharvester', '-b', 'linkedin', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
+
+			#append lists together
+			harvesterGoogleResult.append(harvesterGoogleCmd)
+			harvesterLinkedinResult.append(harvesterLinkedinCmd)
+
+			#append resutls and write to lookup result file
+			for r in harvesterGoogleResult:
+				harvesterFile.writelines(r)
+
+			for j in harvesterLinkedinResult:
+				harvesterFile.writelines(j)
+				
+				
+		#verbosity
+		if args.verbose is True:
+			for g in harvesterGoogleResult: print '\n'.join(g)
+			for i in harvesterLinkedinResult: print '\n'.join(i)
+			
+
+
+			#return list object
+			return harvesterGoogleResult
+			return harvesterLinkedinResult
+
+
+
+#*******************************************************************************
+def credential_leaks(args, lookup):
+	#grep through local copies of various password database dumps. 
+	#possibly compare to a hashcat potfile as well
+	#you'll need a ./credleaks director and a ./potfile directory populated
+
+	#need to use 2 dicts, compare on hash values then return uname and plainpw value
+
+	if args.creds is True:
+
+		dumpDict={}
+		dumpHash=[]
+		dumpUser=[]
+
+
+		#for each domain/ip provided
+		for l in lookup:
+
+			#overall, take the lookup value (preferably a domain) and search the dumps for it
+			#for each file in ./credleaks directory
+			for credFileName in os.listdir('./credleaks/'):
+				#open the file
+				credFileOpen = open('./credleaks/'+credFileName, "r")
+
+				#for each line in opened file
+				for line in credFileOpen:
+					#regex search for our current lookup value l
+					if re.search((str(l)), line):
+						#split matches based on colons, like awk -F :
+						matchedLine=line.split(":")
+						#print first and second column to stdout if verbose is set
+						if args.verbose is True:
+							print matchedLine[0]+' '+matchedLine[1]
+						#append matched values to dumpHash and dumpUser lists and strip newlines
+						dumpHash.append(matchedLine[1].rstrip("\r\n"))
+						dumpUser.append(matchedLine[0].rstrip("\r\n"))
+
+		
+			#still in our lookup value iterate potfiles directory
+			for potFileName in os.listdir('./potfile/'):
+				#open a pot file
+				potFileOpen = open('./potfile/'+potFileName,"r")
+				
+		
+			for z in dumpHash:
+				for potLine in potFileOpen:
+					if str(z) == str(potLine[0:len(z)]):
+						print "match! "+str(z)+':'+str(potLine[0:len(z)])
+						break
+
+#*******************************************************************************
+def pyfoca():
+	if args.whois is True:
+		print "foca"
+#*******************************************************************************
 	
 
 #*******************************************************************************
+
 def write_report(args, googleResultWrite, whoisResultWrite, dnsResultWrite, shodanResultWrite):
 	
 	google = "No Google Results"
