@@ -4,6 +4,7 @@
 #python-docx: https://pypi.python.org/pypi/python-docx
 #shodan: https://github.com/achillean/shodan-python
 #google: https://pypi.python.org/pypi/google, also installs beautifulsoup
+#dns doesnt want to install via pip on debian or ubuntu. have to use apt install python-dnspyhton
 
 docx
 dns
