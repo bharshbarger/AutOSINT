@@ -8,5 +8,22 @@ Right now it can do name lookups via -n, whois via -w, Google search for 'passwo
 
 usage: AutOSINT.py [-h] [-d DOMAIN [DOMAIN ...]]
                    [-i IPADDRESS [IPADDRESS ...]] [-a] [-w] [-n] [-g]
-                   [-s [SHODAN]] [-v]
+                   [-s [SHODAN]] [-v] [-p] [-t] [-c] [-f]
 
+optional arguments:
+  -h, --help            show this help message and exit
+  -d DOMAIN [DOMAIN ...], --domain DOMAIN [DOMAIN ...]
+                        the Domain(s) you want to search
+  -i IPADDRESS [IPADDRESS ...], --ipaddress IPADDRESS [IPADDRESS ...]
+                        the IP address(es) you want to search
+  -a, --all             run All queries
+  -w, --whois           query Whois
+  -n, --nslookup        Name query DNS
+  -g, --google          query Google for passwords
+  -s [SHODAN], --shodan [SHODAN]
+                        query Shodan, optionally provide -s <apikey>
+  -v, --verbose         Verbose
+  -p, --pastebinsearch  Search pastebin
+  -t, --theharvester    Invoke theHarvester
+  -c, --creds           Search local copies of credential dumps
+  -f, --foca            invoke pyfoca
