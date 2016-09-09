@@ -1,1 +1,11 @@
 
+###### Requirements without Version Specifiers ######
+
+#python-docx: https://pypi.python.org/pypi/python-docx
+#shodan: https://github.com/achillean/shodan-python
+#google: https://pypi.python.org/pypi/google, also installs beautifulsoup
+
+docx
+dns
+shodan
+google
