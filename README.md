@@ -3,6 +3,9 @@ Tool to automate common osint tasks. Probably best run on Kali.
 
 A project to try to automate some common things checked during open source intelligence gathering engagements.
 
+!!! pip doesnt like to install the dns module on ubuntu or debian
+use #apt install python-dnspython
+
 Right now it can do: 
 name lookups via -n, 
 whois via -w, 
