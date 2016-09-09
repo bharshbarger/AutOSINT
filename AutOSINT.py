@@ -51,12 +51,12 @@ def main():
 
 	#parse input, nargs allows one or more to be entered
 	parser = argparse.ArgumentParser()
-	parser.add_argument('-d', '--domain', nargs = '+', help = 'the Domain(s) you want to search')
-	parser.add_argument('-i', '--ipaddress', nargs = '+', help = 'the IP address(es) you want to search')
+	parser.add_argument('-d', '--domain', nargs = '+', help = 'the Domain(s) you want to search.')
+	parser.add_argument('-i', '--ipaddress', nargs = '+', help = 'the IP address(es) you want to search. Must be a valid IP. ')
 	parser.add_argument('-a', '--all', help = 'run All queries', action = 'store_true')
-	parser.add_argument('-w', '--whois', help = 'query Whois', action = 'store_true')
-	parser.add_argument('-n', '--nslookup',help = 'Name query DNS', action = 'store_true')
-	parser.add_argument('-g', '--google',help = 'query Google for passwords', action = 'store_true')
+	parser.add_argument('-w', '--whois', help = 'query Whois for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
+	parser.add_argument('-n', '--nslookup',help = 'Name query DNS for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
+	parser.add_argument('-g', '--googledork', nargs = '+', help = 'query Google for supplied args that are treated as a dork. i.e. -g password becomes a search for "password site:<domain>"')
 	parser.add_argument('-s', '--shodan', nargs = '?', help = 'query Shodan, optionally provide -s <apikey>')
 	parser.add_argument('-v', '--verbose', help = 'Verbose', action = 'store_true')
 	parser.add_argument('-p', '--pastebinsearch', help = 'Search pastebin', action = 'store_true')
@@ -93,7 +93,11 @@ def main():
 	    parser.error('No action requested, add domain(s) or IP address(es)\n')
 
 	#if no queries defined, exit
-	if (args.whois is False and args.nslookup is False and args.google is False and args.shodan is False and args.pastebinsearch is False):
+	if (args.whois is False and \
+		args.nslookup is False and \
+		args.googledork is False and \
+		args.shodan is False and \
+		args.pastebinsearch is False):
 		print '[-] No options specified, use -h or --help for a list'
 		exit()
 
@@ -144,7 +148,7 @@ def whois_search(args, lookup):
 		for i, l in enumerate(lookup):
 			print 'Performing whois query ' + str(i + 1) + ' for ' + l
 			
-			whoisFile=open(''.join(l)+'_whois.txt','a')
+			whoisFile=open(''.join(l)+'_whois.txt','w')
 
 			#subprocess open the whois command for current value of "l" in lookup list. 
 			#split into newlines instead of commas
@@ -155,7 +159,7 @@ def whois_search(args, lookup):
 
 			#write the file
 			for r in whoisResult:
-				whoisFile.writelines(str(r))
+				whoisFile.writelines('\n'.join(r))
 			
 			#verbosity logic
 			if args.verbose is True:
@@ -183,58 +187,58 @@ def dns_search(args, lookup):
 				dnsResult.append(dnsCmd)
 
 				for r in dnsResult:
-					dnsFile.writelines(r)
+					dnsFile.writelines('\n'.join(r))
 
 				#print dnsResult if -v
 				if args.verbose is True:
 					for d in dnsResult: print '\n'.join(d)
-				#verbose logic
-
 
 			#return list object
 			return dnsResult
 
 #*******************************************************************************
-#this could be GREATLY improved. perhaps clone GHDB dorks to a file and iterate?
+# this could be GREATLY improved.
+# pass google dorks as args for now
 # GHDB password dorks https://www.exploit-db.com/google-hacking-database/9/
 # GHDB sensitive dirs https://www.exploit-db.com/google-hacking-database/3/
-# do all dorks from a file?
+# uses this awesome module https://pypi.python.org/pypi/google
+# requires beautifulsoup
 
 def google_search(args, lookup):
 
-	if args.google is True:
-		
-		#init list
-		googleResult = []
+	# check for empty args
+	if args.googledork is not None:
+		for d in args.googledork:
 
-			
-		#iterate the lookup list
-		for i, l in enumerate(lookup):
-			googleFile=open(''.join(l)+'_google.txt','a')
+			#init list
+			googleResult = []
 
-			#show user whiat is being searched
+			#iterate the lookup list
+			for i, l in enumerate(lookup):
+				googleFile=open(''.join(l)+'_google_dork.txt','w')
 
-
-			print 'Google query ' + str(i + 1) + ' for " password site:' + l + ' "'
-			
-			try:
-				#iterate url results from search of password(for now) and site:current list value
-				for url in search('password site:' + l, stop = 20):
-					
-					#append results together
-					googleResult.append(url)
-			except Exception:
-				pass
-
-		for r in googleResult:
-			googleFile.writelines(r + '\r\n')
-
-		#verbosity flag
-		if args.verbose is True:
-			for r in googleResult: print ''.join(r)
+				#show user whiat is being searched
+				print 'Google query ' + str(i + 1) + ' for " '+d+' ' + 'site:'+l + ' "'
 				
-		#return results list
-		return googleResult
+				try:
+					#iterate url results from search of password(for now) and site:current list value
+					for url in search(str(d)+ ' ' + 'site:'+str(l), stop = 20):
+						
+						#append results together
+						googleResult.append(url)
+				#catch exceptions
+				except Exception:
+					pass
+
+			for r in googleResult:
+				googleFile.writelines(r + '\r\n')
+
+			#verbosity flag
+			if args.verbose is True:
+				for r in googleResult: print ''.join(r)
+					
+			#return results list
+			return googleResult
 
 
 #*******************************************************************************
