@@ -73,9 +73,7 @@ def main():
 	if args.all is True:
 		args.whois = True
 		args.nslookup = True
-		args.google = True
 		args.shodan = True
-		args.pastebinsearch = True
 		args.theharvester = True
 		args.creds = True
 
@@ -96,11 +94,12 @@ def main():
 	#if no queries defined, exit
 	if (args.whois is False and \
 		args.nslookup is False and \
-		args.googledork is False and \
-		args.shodan is False and \
-		args.pastebinsearch is False):
+		args.googledork is None and \
+		args.shodan is None and \
+		args.creds is False and \
+		args.pastebinsearch is None):
 		print '[-] No options specified, use -h or --help for a list'
-		exit()
+		sys.exit(1)
 
 	#check to see if an ip or domain name was entered
 	if args.domain is not None:
@@ -114,16 +113,7 @@ def main():
 		print "lookup value is "+ str(lookup)
 
 
-	potfileDir = './potfile'
-	credLeakDir = './credleaks'
 
-	'''if not os.path.exists(potfileDir):
-		print './potfile directory missing. create?'
-		os.makedirs(potfileDir)
-
-	if not os.path.exists(credLeakDir):
-		print './credleaks directory missing. create?'
-		os.makedirs(potfileDir)'''
 
 	#call functions
 	whois_search(args, lookup)
@@ -147,7 +137,7 @@ def whois_search(args, lookup):
 
 		#iterate the index and values of the lookup list
 		for i, l in enumerate(lookup):
-			print 'Performing whois query ' + str(i + 1) + ' for ' + l
+			print '[+] Performing whois query ' + str(i + 1) + ' for ' + l
 			
 			whoisFile=open(''.join(l)+'_whois.txt','w')
 
@@ -179,7 +169,7 @@ def dns_search(args, lookup):
 			
 			#iterate the index and values of the lookup list
 			for i, l in enumerate(lookup):
-				print 'Performing DNS query #'+ str(i + 1) + ' using "host -a " ' + l
+				print '[+] Performing DNS query #'+ str(i + 1) + ' using "host -a " ' + l
 				dnsFile=open(''.join(l)+'_dns.txt','a')
 				#subprocess to run host -a on the current value of l in the loop, split into newlines
 				dnsCmd = subprocess.Popen(['host', '-a', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\n')
@@ -209,7 +199,14 @@ def google_search(args, lookup):
 
 	# check for empty args
 	if args.googledork is not None:
+
+		#because i fail at logic
+		if args.googledork is None:
+			print '[-] No Google dork(s) defined! Set with -g <dork(s)> Skipping!!!'
+			return
+
 		for d in args.googledork:
+			
 
 			#init list
 			googleResult = []
@@ -219,7 +216,7 @@ def google_search(args, lookup):
 				googleFile=open(''.join(l)+'_google_dork.txt','w')
 
 				#show user whiat is being searched
-				print 'Google query ' + str(i + 1) + ' for " '+str(d)+' ' + 'site:'+str(l) + ' "'
+				print '[+] Google query ' + str(i + 1) + ' for " '+str(d)+' ' + 'site:'+str(l) + ' "'
 				
 				try:
 					#iterate url results from search of password(for now) and site:current list value
@@ -243,7 +240,8 @@ def google_search(args, lookup):
 					
 			#return results list
 			return googleResult
-
+	
+		
 
 #*******************************************************************************
 def shodan_search(args, lookup):
@@ -271,7 +269,7 @@ def shodan_search(args, lookup):
 		#roll through the lookup list from -i or -d
 		for i, l in enumerate(lookup):
 			#user notification that something is happening
-			print 'Querying Shodan via API search for ' + l
+			print '[+] Querying Shodan via API search for ' + l
 			try:
 				#set results to api search of current lookup value
 				results = shodanApi.search(l)
@@ -282,7 +280,10 @@ def shodan_search(args, lookup):
 			#catch exceptions		
 			except shodan.APIError, e:
 				#print excepted error
-				print 'Error %s' % e
+				print '[-] Shodan Error: %s' % e + ' Skipping!!!'
+				print '[!] You may need to specify an API key with -s <api key>'
+				return
+				
 		#verbosity logic
 		if args.verbose is True:
 			print 'Results found: %s' % results['total']
@@ -308,6 +309,10 @@ def pastebin_search(args, lookup):
 	# check for empty args
 	if args.pastebinsearch is not None:
 		print '[!] requires a Pastebin Pro account for IP whitelisting'
+
+		if args.pastebinsearch is None:
+			print '[-] No pastebin search string provided. Skipping! Provide with -p <search items>'
+			return
 
 		for a in args.pastebinsearch:
 			#init lists
@@ -360,17 +365,20 @@ def pastebin_search(args, lookup):
 			for r in scrapeResult: print ''.join(r)
 			for c in scrapeContent: print ' '.join(c)'''
 
-
 		#return results list
 		return scrapeResult
 		return scrapeContent
 
+	
+
+		
+
 #*******************************************************************************
 def the_harvester(args, lookup):
 
-
+	#https://github.com/laramies/theHarvester
 	if args.theharvester is True:
-
+		print '[+] Running theHarvester against google and linkedin'
 		#init lists
 		harvested = []
 		harvesterGoogleResult = []
@@ -380,7 +388,7 @@ def the_harvester(args, lookup):
 		for i, l in enumerate(lookup):
 
 			#open file to write to
-			harvesterFile=open(''.join(l)+'_theharvester.txt','a')
+			harvesterFile=open(''.join(l)+'_theharvester.txt','w')
 
 			#run harvester with -b google on lookup
 			harvesterGoogleCmd = subprocess.Popen(['theharvester', '-b', 'google', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
@@ -418,7 +426,21 @@ def credential_leaks(args, lookup):
 	#dumps need to be in uname:hash format
 	#this could probably stand to be multi threaded
 
+	potfileDir = './potfile'
+	credLeakDir = './credleaks'
+
 	if args.creds is True:
+
+		if not os.path.exists(potfileDir):
+			print '[-] The potfile directory is missing. Symlink your location to ./potfile and see if that works'
+			return
+		
+
+		if not os.path.exists(credLeakDir):
+			print '[-] The credleaks directory is missing. Symlink your location to ./credleaks and see if that works'
+			return
+
+
 	
 		#for each domain/ip provided
 		for l in lookup:
@@ -448,7 +470,7 @@ def credential_leaks(args, lookup):
 			if args.verbose is True:
 				for h, u in dumpDict.items():
 					print(str(h), str(u)) 
-			print '[+] Searching Credential Dumps for '+l
+			print '[+] Searching Local Credential Dumps in ./credleaks against potfile in ./potfile '+l
 			credFile.writelines('********EMAILS FOUND BELOW********\n\n\n\n')
 			for h, u in dumpDict.items():
 				credFile.writelines(str(u)+'\n')
@@ -460,6 +482,7 @@ def credential_leaks(args, lookup):
 				#open a pot file
 				with open('./potfile/'+potFileName, 'r') as potFile:
 					#then look at every line
+					print '[!] Any creds you have in your potfile will appear below as user:hash:plain : '
 					for potLine in potFile:
 						#then for every line look at every hash and user in the dict
 						for h, u in dumpDict.items():
@@ -470,10 +493,6 @@ def credential_leaks(args, lookup):
 								print str(u)+':'+str(potLine.rstrip("\r\n"))
 								#need to append the output to a variable to return or write to the file
 								credFile.writelines(str(u)+':'+str(potLine[len(h):]))
-
-		
-								
-
 
 #*******************************************************************************
 def pyfoca():
