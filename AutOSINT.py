@@ -50,6 +50,7 @@ def main():
 
 
 	#parse input, nargs allows one or more to be entered
+	#https://docs.python.org/3/library/argparse.html
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-d', '--domain', nargs = '+', help = 'the Domain(s) you want to search.')
 	parser.add_argument('-i', '--ipaddress', nargs = '+', help = 'the IP address(es) you want to search. Must be a valid IP. ')
@@ -57,7 +58,7 @@ def main():
 	parser.add_argument('-w', '--whois', help = 'query Whois for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
 	parser.add_argument('-n', '--nslookup',help = 'Name query DNS for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
 	parser.add_argument('-g', '--googledork', nargs = '+', help = 'query Google for supplied args that are treated as a dork. i.e. -g password becomes a search for "password site:<domain>"')
-	parser.add_argument('-s', '--shodan', nargs = '?', help = 'query Shodan, optionally provide -s <apikey>')
+	parser.add_argument('-s', '--shodan', nargs = 1, help = 'query Shodan, optionally provide -s <apikey>')
 	parser.add_argument('-v', '--verbose', help = 'Verbose', action = 'store_true')
 	parser.add_argument('-p', '--pastebinsearch', help = 'Search pastebin', action = 'store_true')
 	parser.add_argument('-t', '--theharvester', help = 'Invoke theHarvester', action = 'store_true')
@@ -218,7 +219,7 @@ def google_search(args, lookup):
 				googleFile=open(''.join(l)+'_google_dork.txt','w')
 
 				#show user whiat is being searched
-				print 'Google query ' + str(i + 1) + ' for " '+d+' ' + 'site:'+l + ' "'
+				print 'Google query ' + str(i + 1) + ' for " '+str(d)+' ' + 'site:'+str(l) + ' "'
 				
 				try:
 					#iterate url results from search of password(for now) and site:current list value
@@ -256,24 +257,34 @@ def shodan_search(args, lookup):
 
 	# If theres an api key via -s
 	if shodanApiKey is not None:
-		shodanFile=open(''.join(lookup)+'_shodan.txt','a')
-		print "starting shodan"
+		shodanFile=open(''.join(lookup)+'_shodan.txt','w')
 		#roll through the lookup list from -i or -d
 		for i, l in enumerate(lookup):
+			#user notification that something is happening
 			print 'Querying Shodan via API search for ' + l
 			try:
+				#set results to api search of current lookup value
 				results = shodanApi.search(l)
-				if args.verbose is True:
-					print 'Results found: %s' % results['total']
-					for result in results['matches']:
-						print 'IP: %s' % result['ip_str']
-						print result['data']
-						shodanResult.append(str(results))
+				#for each result
+				for result in results['matches']:
+					#append to shodanResult list
+					shodanResult.append(str(results))
+			#catch exceptions		
 			except shodan.APIError, e:
+				#print excepted error
 				print 'Error %s' % e
+	#verbosity logic
+	if args.verbose is True:
+		print 'Results found: %s' % results['total']
+		print 'IP: %s' % result['ip_str']
+		print result['data']
 
-	for r in shodanResult:			
-		shodanFile.writelines(''.join(r)+'\r\n')
+	#write contents of shodanResult list. this needs formatted
+	for r in shodanResult:
+
+		shodanFile.writelines('Results found: %s' % results['total'])
+		shodanFile.writelines('IP: %s' % result['ip_str'])
+		shodanFile.writelines(result['data'])
 
 	return shodanResult
 	
