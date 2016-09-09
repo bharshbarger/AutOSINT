@@ -227,6 +227,9 @@ def google_search(args, lookup):
 						
 						#append results together
 						googleResult.append(url)
+
+						#rate limit to 1 per second
+						time.sleep(1)
 				#catch exceptions
 				except Exception:
 					pass
@@ -299,55 +302,63 @@ def shodan_search(args, lookup):
 #*******************************************************************************
 #right now this just google dorks a supplied arg for site:pastebin.com
 #need to implement scraping api http://pastebin.com/api_scraping_faq
+#scraping url is here http://pastebin.com/api_scraping.php
 def pastebin_search(args, lookup):
 	
-
 	# check for empty args
 	if args.pastebinsearch is not None:
 		print '[!] requires a Pastebin Pro account for IP whitelisting'
-		#init lists
-		scrapeResult = []
-		scrapeContent = []
 
 		for a in args.pastebinsearch:
+			#init lists
+			scrapeResult = []
+			scrapeContent = []
 
-			scraped=open(''.join(lookup)+'_pastebin.txt','a')
-			pasteUrls=open(''.join(lookup)+'_pastebin_urls.txt','a')
 			#iterate the lookup list
 			for i, l in enumerate(lookup):
+
+				scrapedFile=open(''.join(l)+'_pastebin_content.txt','w')
+				pasteUrlFile=open(''.join(l)+'_pastebin_urls.txt','w')
 				#show user whiat is being searched
-				print 'Google query #' + str(i + 1) + ' for '+  str(a) +' '+str(l) + ' site:pastebin.com'
+				print 'Google query #' + str(i + 1) + ' for '+  str(a) +' '+ str(l) + ' site:pastebin.com'
 				
 				try:
 					#iterate url results from search of dork arg and supplied lookup value against pastebin
-					for url in search(str(a)+' ' + str(l) + 'site:pastebin.com', stop = 20):
-						time.sleep(1)
-						
+					for url in search(str(a) +' '+ str(l) + ' site:pastebin.com', stop = 20):
+						#time.sleep(1)
+
 						#append results together
 						scrapeResult.append(url)
-						pasteUrls.writelines(scrapeResult +'\r\n')
-					
-
-					for r in scrapeResult:
-						print "Found " + r
 						
-						try:
-							req = urllib2.Request(r)
-							print 'Opening ' + r
-							scrapeContent = urllib2.urlopen(req).read()
-							#scrapeContent.append()
-							#print scrapeContent
-							scraped.writelines(scrapeResult + '\r\n')
-							scraped.writelines(scrapeContent)
-						except Exception:
-							pass
+						time.sleep(1)
+						print url()
 				except Exception:
 					pass
 
+				for r in scrapeResult:
+					try:
+						req = urllib2.Request(r)
+						print 'Opening ' + r
+						scrapeContent = urllib2.urlopen(req).read()
+						time.sleep(1)
+						#scrapeContent.append()
+						print scrapeContent
+						
+					except Exception:
+						pass
+				
+				
+				for y in scrapeResult:
+					scrapedFile.writelines(scrapeContent)
+
+				for z in scrapeContent:
+					pasteUrlFile.writelines(scrapeResult)
+				
+
 		#verbosity flag
-		if args.verbose is True:
+		'''if args.verbose is True:
 			for r in scrapeResult: print ''.join(r)
-			for c in scrapeContent: print ' '.join(c)
+			for c in scrapeContent: print ' '.join(c)'''
 
 
 		#return results list
