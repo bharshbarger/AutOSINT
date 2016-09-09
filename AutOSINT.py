@@ -60,7 +60,7 @@ def main():
 	parser.add_argument('-g', '--googledork', nargs = '+', help = 'query Google for supplied args that are treated as a dork. i.e. -g password becomes a search for "password site:<domain>"')
 	parser.add_argument('-s', '--shodan', nargs = 1, help = 'query Shodan, optionally provide -s <apikey>')
 	parser.add_argument('-v', '--verbose', help = 'Verbose', action = 'store_true')
-	parser.add_argument('-p', '--pastebinsearch', help = 'Search pastebin', action = 'store_true')
+	parser.add_argument('-p', '--pastebinsearch', nargs = '+', help = 'Search google for <arg> site:pastebin.com. Requires a pro account if you dont want to get blacklisted')
 	parser.add_argument('-t', '--theharvester', help = 'Invoke theHarvester', action = 'store_true')
 	parser.add_argument('-c', '--creds', help = 'Search local copies of credential dumps', action = 'store_true')
 	parser.add_argument('-f', '--foca', help = 'invoke pyfoca', action = 'store_true')
@@ -248,16 +248,23 @@ def shodan_search(args, lookup):
 	#first if  https://shodan.readthedocs.io/en/latest/tutorial.html#connect-to-the-api
 	#else https://shodan.readthedocs.io/en/latest/tutorial.html#looking-up-a-host
 
-	#list that we'll return
-	shodanResult = []
-	
-
-	shodanApiKey = args.shodan
-	shodanApi = shodan.Shodan(shodanApiKey)
+	#variable for api key fed from args
+	 
 
 	# If theres an api key via -s
-	if shodanApiKey is not None:
+	if args.shodan is not None:
+
+		shodanApiKey = args.shodan
+		
+		#list that we'll return
+		shodanResult = []
+	
+		#invoke api with api key provided
+		shodanApi = shodan.Shodan(shodanApiKey)
+
+		#open output file
 		shodanFile=open(''.join(lookup)+'_shodan.txt','w')
+		
 		#roll through the lookup list from -i or -d
 		for i, l in enumerate(lookup):
 			#user notification that something is happening
@@ -273,51 +280,53 @@ def shodan_search(args, lookup):
 			except shodan.APIError, e:
 				#print excepted error
 				print 'Error %s' % e
-	#verbosity logic
-	if args.verbose is True:
-		print 'Results found: %s' % results['total']
-		print 'IP: %s' % result['ip_str']
-		print result['data']
+		#verbosity logic
+		if args.verbose is True:
+			print 'Results found: %s' % results['total']
+			print 'IP: %s' % result['ip_str']
+			print result['data']
 
-	#write contents of shodanResult list. this needs formatted
-	for r in shodanResult:
+		#write contents of shodanResult list. this needs formatted
+		shodanFile.writelines('%s' % results['total'])
+		for r in shodanResult:
+			shodanFile.writelines('%s' % result['ip_str'])
+			shodanFile.writelines('\n')
+			shodanFile.writelines(result['data'])
+			shodanFile.writelines('****************\n')
 
-		shodanFile.writelines('Results found: %s' % results['total'])
-		shodanFile.writelines('IP: %s' % result['ip_str'])
-		shodanFile.writelines(result['data'])
-
-	return shodanResult
+		return shodanResult
 	
 #*******************************************************************************
-
-#right now this just google dorks
+#right now this just google dorks a supplied arg for site:pastebin.com
 #need to implement scraping api http://pastebin.com/api_scraping_faq
 def pastebin_search(args, lookup):
-	#init lists
-	scrapeResult = []
-	scrapeContent = []
-	headers = { 'User-Agent' : 'Mozilla/5.0' }
+	
 
-
-
-	if args.pastebinsearch is True:
+	# check for empty args
+	if args.pastebinsearch is not None:
 		print '[!] requires a Pastebin Pro account for IP whitelisting'
-		scraped=open(''.join(lookup)+'_pastebin.txt','a')
-		pasteUrls=open(''.join(lookup)+'_pastebin_urls.txt','a')
-		#iterate the lookup list
-		for i, l in enumerate(lookup):
-			#show user whiat is being searched
-			print 'Google query #' + str(i + 1) + ' for " password site:pastebin.com ' + l + ' "'
-			
-			try:
-				#iterate url results from search of password(for now) and site:current list value
-				for url in search('password OR license OR hacked site:pastebin.com ' + l, stop = 20):
-					time.sleep(1)
-					
-					#append results together
-					scrapeResult.append(url)
-					pasteUrls.writelines(scrapeResult +'\r\n')
+		#init lists
+		scrapeResult = []
+		scrapeContent = []
+
+		for a in args.pastebinsearch:
+
+			scraped=open(''.join(lookup)+'_pastebin.txt','a')
+			pasteUrls=open(''.join(lookup)+'_pastebin_urls.txt','a')
+			#iterate the lookup list
+			for i, l in enumerate(lookup):
+				#show user whiat is being searched
+				print 'Google query #' + str(i + 1) + ' for '+  str(a) +' '+str(l) + ' site:pastebin.com'
 				
+				try:
+					#iterate url results from search of dork arg and supplied lookup value against pastebin
+					for url in search(str(a)+' ' + str(l) + 'site:pastebin.com', stop = 20):
+						time.sleep(1)
+						
+						#append results together
+						scrapeResult.append(url)
+						pasteUrls.writelines(scrapeResult +'\r\n')
+					
 
 					for r in scrapeResult:
 						print "Found " + r
@@ -332,8 +341,8 @@ def pastebin_search(args, lookup):
 							scraped.writelines(scrapeContent)
 						except Exception:
 							pass
-			except Exception:
-				pass
+				except Exception:
+					pass
 
 		#verbosity flag
 		if args.verbose is True:
