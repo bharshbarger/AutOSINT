@@ -3,19 +3,6 @@ Tool to automate common osint tasks. Probably best run on Kali.
 
 A project to try to automate some common things checked during open source intelligence gathering engagements.
 
-!!! pip doesnt like to install the dns module on ubuntu or debian
-use #apt install python-dnspython
-
-Right now it can do: 
-name lookups via -n, 
-whois via -w, 
-Google search for 'password' with 'site:' for the ip or domain you specify
-and Shodan which currently requires an API key to function properly
-
--c will search your -d value(s) in local cred dumps like linkedin, and compare the hashes to a local potfile
-
-a lot of other functions are work in progress
-
 
 usage: AutOSINT.py [-h] [-d DOMAIN [DOMAIN ...]]
 
