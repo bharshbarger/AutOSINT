@@ -384,9 +384,7 @@ def credential_leaks(args, lookup):
 	#this could probably stand to be multi threaded
 
 	if args.creds is True:
-			
-		
-
+	
 		#for each domain/ip provided
 		for l in lookup:
 			credFile=open(''.join(l)+'_creds.txt','w')
@@ -436,7 +434,9 @@ def credential_leaks(args, lookup):
 								#print the hash
 								print str(u)+':'+str(potLine.rstrip("\r\n"))
 								#need to append the output to a variable to return or write to the file
-								credFile.writelines(str(u)+':'+str(potLine[len(h):])+'\n')
+								credFile.writelines(str(u)+':'+str(potLine[len(h):]))
+
+		
 								
 
 
