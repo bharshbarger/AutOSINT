@@ -3,7 +3,7 @@
 #By @arbitrary_code
 
 #Special thanks to:
-#Nick Sanzotta, for helping with general coding expertise
+#@Beamr, for helping with general coding expertise
 #unum alces!
 
 # poll various OSINT sources for data, write to .doc
@@ -378,15 +378,21 @@ def the_harvester(args, lookup):
 #*******************************************************************************
 def credential_leaks(args, lookup):
 	#grep through local copies of various password database dumps. 
-	#possibly compare to a hashcat potfile as well
-	#you'll need a ./credleaks director and a ./potfile directory populated
+	#compares to a hashcat potfile as well
+	#you'll need a ./credleaks directory and a ./potfile directory populated
+	#dumps need to be in uname:hash format
+	#this could probably stand to be multi threaded
 
 	if args.creds is True:
-		#init dictionary
-		dumpDict={}
+			
+		
 
 		#for each domain/ip provided
 		for l in lookup:
+			credFile=open(''.join(l)+'_creds.txt','a')
+
+			#init dictionary
+			dumpDict={}
 
 			#overall, take the lookup value (preferably a domain) and search the dumps for it
 			#for each file in ./credleaks directory
@@ -400,33 +406,31 @@ def credential_leaks(args, lookup):
 					if re.search((str(l)), line):
 						#split matches based on colons, like awk -F :. emails shouldnt have colons, right?
 						matchedLine=line.split(":")
-						#print first and second column to stdout if verbose is set
-						#append matched values to dumpHash and dumpUser lists and strip newlines
-						#dumpHash.append(matchedLine[1].rstrip("\r\n"))
-						#dumpUser.append(matchedLine[0].rstrip("\r\n"))
-						
-						#dumpDict['h']=str(matchedLine[1].rstrip("\r\n"))
+						#take the split parts, 0 and 1 that are uname and hash, respectively
+						#place into a dict and strip the \r\n off of them
 						dumpDict[str(matchedLine[1].rstrip("\r\n"))]=str(matchedLine[0].rstrip("\r\n"))
 			
 			#if args.verbose is True:	
-				#print dumpDict
-
+			#print dumpDict contents
+			if args.verbose is True:
+				for h, u in dumpDict.items():
+					print(str(h), str(u)) 
 		
 			#still in our lookup value iterate potfiles directory
 			for potFileName in os.listdir('./potfile/'):
 				#open a pot file
-				potFileOpen = open('./potfile/'+potFileName,"r")
-			
-			if args.verbose is True:
-				for h, u in dumpDict.items():
-					print(h, u) 
-
-			for h, u in dumpDict.items():
-				for potLine in potFileOpen:
-					if str(h) == str(potLine[0:len(h)]):
-					#if str(z) in dumpDict:print(dumpDict[z])
-						print "match! "+str(u)+':'+str(potLine)
-						break
+				with open('./potfile/'+potFileName, 'r') as potFile:
+					#then look at every line
+					for potLine in potFile:
+						#then for every line look at every hash and user in the dict
+						for h, u in dumpDict.items():
+							#if the hash in the dict matches a line in the potfile
+							#that is the same length as the original hash
+							if str(h) == str(potLine[0:len(h)]):
+								#print the hash
+								print str(u)+':'+str(potLine.rstrip("\r\n"))
+								#need to append the output to a variable to return or write to the file
+						
 
 
 #*******************************************************************************
