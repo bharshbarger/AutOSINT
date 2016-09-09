@@ -30,8 +30,6 @@ import docx
 import re
 import os
 from google import search
-from termcolor import colored
-
 
 #python-docx: https://pypi.python.org/pypi/python-docx
 #shodan: https://github.com/achillean/shodan-python
@@ -41,14 +39,14 @@ from termcolor import colored
 
 def main():
 
-	print colored('''
+	print '''
     _         _    ___  ____ ___ _   _ _____ 
    / \  _   _| |_ / _ \/ ___|_ _| \ | |_   _|
   / _ \| | | | __| | | \___ \| ||  \| | | |  
  / ___ \ |_| | |_| |_| |___) | || |\  | | |  
-/_/   \_\__,_|\__|\___/|____/___|_| \_| |_|\n''')
+/_/   \_\__,_|\__|\___/|____/___|_| \_| |_|\n'''
 
-	print colored('AutOSINT.py v0.1, a way to do some automated OSINT tasks\n', 'green')
+	print 'AutOSINT.py v0.1, a way to do some automated OSINT tasks\n'
 
 
 	#parse input, nargs allows one or more to be entered
@@ -66,7 +64,9 @@ def main():
 	parser.add_argument('-c', '--creds', help = 'Search local copies of credential dumps', action = 'store_true')
 	parser.add_argument('-f', '--foca', help = 'invoke pyfoca', action = 'store_true')
 	args = parser.parse_args()
-	print args
+	
+	if args.verbose is True:
+		print args
 
 	#set all if -a
 	if args.all is True:
@@ -85,7 +85,7 @@ def main():
 			try:
 				socket.inet_aton(a)
 			except socket.error:
-				print colored("[-] Invalid IP entered! ", 'red') + a
+				print '[-] Invalid IP entered!' + a
 				sys.exit(1)
 
 	#require at least one argument
@@ -94,7 +94,7 @@ def main():
 
 	#if no queries defined, exit
 	if (args.whois is False and args.nslookup is False and args.google is False and args.shodan is False and args.pastebinsearch is False):
-		print colored('No options specified, use -h or --help for a list', 'red')
+		print '[-] No options specified, use -h or --help for a list'
 		exit()
 
 	#check to see if an ip or domain name was entered
@@ -105,19 +105,20 @@ def main():
 		for i in args.ipaddress:
 			lookup = args.ipaddress
 
-	print "lookup value is "+ str(lookup)
+	if args.verbose is True:
+		print "lookup value is "+ str(lookup)
 
 
 	potfileDir = './potfile'
 	credLeakDir = './credleaks'
 
-	if not os.path.exists(potfileDir):
+	'''if not os.path.exists(potfileDir):
 		print './potfile directory missing. create?'
 		os.makedirs(potfileDir)
 
 	if not os.path.exists(credLeakDir):
 		print './credleaks directory missing. create?'
-		os.makedirs(potfileDir)
+		os.makedirs(potfileDir)'''
 
 	#call functions
 	whois_search(args, lookup)
@@ -141,7 +142,7 @@ def whois_search(args, lookup):
 
 		#iterate the index and values of the lookup list
 		for i, l in enumerate(lookup):
-			print colored ('Performing whois query ' + str(i + 1) + ' for ' + l, 'blue')
+			print 'Performing whois query ' + str(i + 1) + ' for ' + l
 			
 			whoisFile=open(''.join(l)+'_whois.txt','a')
 
@@ -173,7 +174,7 @@ def dns_search(args, lookup):
 			
 			#iterate the index and values of the lookup list
 			for i, l in enumerate(lookup):
-				print colored('Performing DNS query #'+ str(i + 1) + ' using "host -a " ' + l, 'blue')
+				print 'Performing DNS query #'+ str(i + 1) + ' using "host -a " ' + l
 				dnsFile=open(''.join(l)+'_dns.txt','a')
 				#subprocess to run host -a on the current value of l in the loop, split into newlines
 				dnsCmd = subprocess.Popen(['host', '-a', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\n')
@@ -214,7 +215,7 @@ def google_search(args, lookup):
 			#show user whiat is being searched
 
 
-			print colored('Google query ' + str(i + 1) + ' for " password site:' + l + ' "', 'blue')
+			print 'Google query ' + str(i + 1) + ' for " password site:' + l + ' "'
 			
 			try:
 				#iterate url results from search of password(for now) and site:current list value
@@ -255,7 +256,7 @@ def shodan_search(args, lookup):
 		print "starting shodan"
 		#roll through the lookup list from -i or -d
 		for i, l in enumerate(lookup):
-			print colored('Querying Shodan via API search for ' + l, 'blue')
+			print 'Querying Shodan via API search for ' + l
 			try:
 				results = shodanApi.search(l)
 				if args.verbose is True:
@@ -285,13 +286,13 @@ def pastebin_search(args, lookup):
 
 
 	if args.pastebinsearch is True:
-		print colored('requires a Pastebin Pro account for IP whitelisting')
+		print '[!] requires a Pastebin Pro account for IP whitelisting'
 		scraped=open(''.join(lookup)+'_pastebin.txt','a')
 		pasteUrls=open(''.join(lookup)+'_pastebin_urls.txt','a')
 		#iterate the lookup list
 		for i, l in enumerate(lookup):
 			#show user whiat is being searched
-			print colored('Google query #' + str(i + 1) + ' for " password site:pastebin.com ' + l + ' "', 'blue')
+			print 'Google query #' + str(i + 1) + ' for " password site:pastebin.com ' + l + ' "'
 			
 			try:
 				#iterate url results from search of password(for now) and site:current list value
@@ -308,7 +309,7 @@ def pastebin_search(args, lookup):
 						
 						try:
 							req = urllib2.Request(r)
-							print colored('Opening ' + r + '', 'blue')
+							print 'Opening ' + r
 							scrapeContent = urllib2.urlopen(req).read()
 							#scrapeContent.append()
 							#print scrapeContent
@@ -329,8 +330,6 @@ def pastebin_search(args, lookup):
 		return scrapeResult
 		return scrapeContent
 
-
-		
 #*******************************************************************************
 def the_harvester(args, lookup):
 
@@ -365,13 +364,10 @@ def the_harvester(args, lookup):
 			for j in harvesterLinkedinResult:
 				harvesterFile.writelines(j)
 				
-				
 		#verbosity
 		if args.verbose is True:
 			for g in harvesterGoogleResult: print '\n'.join(g)
 			for i in harvesterLinkedinResult: print '\n'.join(i)
-			
-
 
 			#return list object
 			return harvesterGoogleResult
@@ -385,14 +381,9 @@ def credential_leaks(args, lookup):
 	#possibly compare to a hashcat potfile as well
 	#you'll need a ./credleaks director and a ./potfile directory populated
 
-	#need to use 2 dicts, compare on hash values then return uname and plainpw value
-
 	if args.creds is True:
-
+		#init dictionary
 		dumpDict={}
-		dumpHash=[]
-		dumpUser=[]
-
 
 		#for each domain/ip provided
 		for l in lookup:
@@ -407,27 +398,36 @@ def credential_leaks(args, lookup):
 				for line in credFileOpen:
 					#regex search for our current lookup value l
 					if re.search((str(l)), line):
-						#split matches based on colons, like awk -F :
+						#split matches based on colons, like awk -F :. emails shouldnt have colons, right?
 						matchedLine=line.split(":")
 						#print first and second column to stdout if verbose is set
-						if args.verbose is True:
-							print matchedLine[0]+' '+matchedLine[1]
 						#append matched values to dumpHash and dumpUser lists and strip newlines
-						dumpHash.append(matchedLine[1].rstrip("\r\n"))
-						dumpUser.append(matchedLine[0].rstrip("\r\n"))
+						#dumpHash.append(matchedLine[1].rstrip("\r\n"))
+						#dumpUser.append(matchedLine[0].rstrip("\r\n"))
+						
+						#dumpDict['h']=str(matchedLine[1].rstrip("\r\n"))
+						dumpDict[str(matchedLine[1].rstrip("\r\n"))]=str(matchedLine[0].rstrip("\r\n"))
+			
+			#if args.verbose is True:	
+				#print dumpDict
 
 		
 			#still in our lookup value iterate potfiles directory
 			for potFileName in os.listdir('./potfile/'):
 				#open a pot file
 				potFileOpen = open('./potfile/'+potFileName,"r")
-				
-		
-			for z in dumpHash:
+			
+			if args.verbose is True:
+				for h, u in dumpDict.items():
+					print(h, u) 
+
+			for h, u in dumpDict.items():
 				for potLine in potFileOpen:
-					if str(z) == str(potLine[0:len(z)]):
-						print "match! "+str(z)+':'+str(potLine[0:len(z)])
+					if str(h) == str(potLine[0:len(h)]):
+					#if str(z) in dumpDict:print(dumpDict[z])
+						print "match! "+str(u)+':'+str(potLine)
 						break
+
 
 #*******************************************************************************
 def pyfoca():
@@ -460,7 +460,7 @@ def write_report(args, googleResultWrite, whoisResultWrite, dnsResultWrite, shod
 
 
 
-	print colored('Writing results of your query options for to a .docx into the current directory', 'yellow')
+	print 'Writing results of your query options for to a .docx into the current directory'
 	#dump to a word doc
 	doc = docx.Document()
 	doc.add_paragraph('Sample Output')
