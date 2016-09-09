@@ -389,7 +389,7 @@ def credential_leaks(args, lookup):
 
 		#for each domain/ip provided
 		for l in lookup:
-			credFile=open(''.join(l)+'_creds.txt','a')
+			credFile=open(''.join(l)+'_creds.txt','w')
 
 			#init dictionary
 			dumpDict={}
@@ -415,7 +415,13 @@ def credential_leaks(args, lookup):
 			if args.verbose is True:
 				for h, u in dumpDict.items():
 					print(str(h), str(u)) 
-		
+			print '[+] Searching Credential Dumps for '+l
+			credFile.writelines('********EMAILS FOUND BELOW********\n\n\n\n')
+			for h, u in dumpDict.items():
+				credFile.writelines(str(u)+'\n')
+				
+			credFile.writelines('********CREDENTIALS FOUND BELOW*********\n\n\n\n')
+			
 			#still in our lookup value iterate potfiles directory
 			for potFileName in os.listdir('./potfile/'):
 				#open a pot file
@@ -430,7 +436,8 @@ def credential_leaks(args, lookup):
 								#print the hash
 								print str(u)+':'+str(potLine.rstrip("\r\n"))
 								#need to append the output to a variable to return or write to the file
-						
+								credFile.writelines(str(u)+':'+str(potLine[len(h):])+'\n')
+								
 
 
 #*******************************************************************************
