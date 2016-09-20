@@ -38,6 +38,7 @@ from google import search
 #*******************************************************************************
 
 def main():
+	startTime=time.time()
 
 	print '''
     _         _    ___  ____ ___ _   _ _____ 
@@ -122,7 +123,7 @@ def main():
 	shodan_search(args, lookup)
 	pastebin_search(args, lookup)
 	the_harvester(args, lookup)
-	credential_leaks(args, lookup)
+	credential_leaks(args, lookup, startTime)
 	#write_report(args, googleResultWrite, whoisResultWrite, dnsResultWrite, shodanResultWrite)
 
 #*******************************************************************************
@@ -391,10 +392,10 @@ def the_harvester(args, lookup):
 			harvesterFile=open(''.join(l)+'_theharvester.txt','w')
 
 			#run harvester with -b google on lookup
-			harvesterGoogleCmd = subprocess.Popen(['theharvester', '-b', 'google', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
+			harvesterGoogleCmd = subprocess.Popen(['./theharvester', '-b', 'google', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
 
 			#run harvester with -b linkedin on lookup
-			harvesterLinkedinCmd = subprocess.Popen(['theharvester', '-b', 'linkedin', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
+			harvesterLinkedinCmd = subprocess.Popen(['./theharvester', '-b', 'linkedin', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
 
 			#append lists together
 			harvesterGoogleResult.append(harvesterGoogleCmd)
@@ -419,7 +420,7 @@ def the_harvester(args, lookup):
 
 
 #*******************************************************************************
-def credential_leaks(args, lookup):
+def credential_leaks(args, lookup, startTime):
 	#grep through local copies of various password database dumps. 
 	#compares to a hashcat potfile as well
 	#you'll need a ./credleaks directory and a ./potfile directory populated
@@ -454,16 +455,27 @@ def credential_leaks(args, lookup):
 			for credFileName in os.listdir('./credleaks/'):
 				#open the file
 				credFileOpen = open('./credleaks/'+credFileName, "r")
-
+				j=0
+				i=0
 				#for each line in opened file
 				for line in credFileOpen:
+					i=i+1
 					#regex search for our current lookup value l
 					if re.search((str(l)), line):
-						#split matches based on colons, like awk -F :. emails shouldnt have colons, right?
-						matchedLine=line.split(":")
-						#take the split parts, 0 and 1 that are uname and hash, respectively
-						#place into a dict and strip the \r\n off of them
-						dumpDict[str(matchedLine[1].rstrip("\r\n"))]=str(matchedLine[0].rstrip("\r\n"))
+						j=j+1
+						#look for a colon delimiter
+						if ':' in line:
+							#split matches based on colons, like awk -F :. emails shouldnt have colons, right?
+							#also the dat HAS to require colons otherwise it will return an index error
+							matchedLine=line.split(":")
+							#take the split parts, 0 and 1 that are uname and hash, respectively
+							#place into a dict and strip the \r\n off of them
+							dumpDict[str(matchedLine[1].rstrip("\r\n"))]=str(matchedLine[0].rstrip("\r\n"))
+						else:
+							dumpDict['xxx']=str(line.rstrip("\r\n"))
+				if args.verbose is True: 
+					print '[i] Searched ' + str(credFileName)+' and found '+ str(j)
+
 			
 			#if args.verbose is True:	
 			#print dumpDict contents
