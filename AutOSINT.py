@@ -131,18 +131,19 @@ def main():
 def scrape_sites(args, lookup):
 	if args.scraper is not None:
 		
-		
-
+	
 		for i,l in enumerate(lookup):
 
 			print '[+] Scraping sites using '+l
 
-			scrapeFile=open(''.join(l)+'_scrape.txt', 'w')
+			scrapeFile=open(''.join(l)+'_scrape.html', 'w')
 
 			for a in args.scraper:
 
 				#init list and insert domain with tld stripped
-				scrapeUrls =['http://www.indeed.com/cmp/%s/jobs?q=%s' % (l.split('.')[0], a)]
+				scrapeUrls =['http://www.indeed.com/cmp/%s/jobs?q=%s' % (l.split('.')[0], a),\
+				'https://github.com/search?q=%s&type=Code&ref=searchresults' % (l.split('.')[0]),\
+				'https://www.glassdoor.com/Reviews/company-reviews.htm?suggestCount=0&suggestChosen=false&clickSource=searchBtn&typedKeyword=%s&sc.keyword=%s&locT=&locId=' % (l.split('.')[0],l.split('.')[0])]
 
 				for url in scrapeUrls:
 					if args.verbose is True:print '[+] Grabbing '+url
