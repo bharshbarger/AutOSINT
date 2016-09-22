@@ -40,16 +40,6 @@ from google import search
 def main():
 	startTime=time.time()
 
-	print '''
-    _         _    ___  ____ ___ _   _ _____ 
-   / \  _   _| |_ / _ \/ ___|_ _| \ | |_   _|
-  / _ \| | | | __| | | \___ \| ||  \| | | |  
- / ___ \ |_| | |_| |_| |___) | || |\  | | |  
-/_/   \_\__,_|\__|\___/|____/___|_| \_| |_|\n'''
-
-	print 'AutOSINT.py v0.1, a way to do some automated OSINT tasks\n'
-
-
 	#parse input, nargs allows one or more to be entered
 	#https://docs.python.org/3/library/argparse.html
 	parser = argparse.ArgumentParser()
@@ -64,11 +54,19 @@ def main():
 	parser.add_argument('-p', '--pastebinsearch', nargs = '+', help = 'Search google for <arg> site:pastebin.com. Requires a pro account if you dont want to get blacklisted')
 	parser.add_argument('-t', '--theharvester', help = 'Invoke theHarvester', action = 'store_true')
 	parser.add_argument('-c', '--creds', help = 'Search local copies of credential dumps', action = 'store_true')
+	parser.add_argument('-S', '--scraper', nargs = '+', help = 'Scrape pastebin, github, indeed, more to be added. Args are scrape keywords if applicable')
 	parser.add_argument('-f', '--foca', help = 'invoke pyfoca', action = 'store_true')
 	args = parser.parse_args()
-	
-	if args.verbose is True:
-		print args
+
+	if args.verbose is True:print '''
+    _         _    ___  ____ ___ _   _ _____ 
+   / \  _   _| |_ / _ \/ ___|_ _| \ | |_   _|
+  / _ \| | | | __| | | \___ \| ||  \| | | |  
+ / ___ \ |_| | |_| |_| |___) | || |\  | | |  
+/_/   \_\__,_|\__|\___/|____/___|_| \_| |_|\n'''
+
+	if args.verbose is True:print 'AutOSINT.py v0.1, a way to do some automated OSINT tasks\n'
+	if args.verbose is True:print args
 
 	#set all if -a
 	if args.all is True:
@@ -77,6 +75,7 @@ def main():
 		args.shodan = True
 		args.theharvester = True
 		args.creds = True
+		args.scraper = True
 
 
 	#validate entered IP address? do we even care? i and d do the same shit
@@ -86,7 +85,7 @@ def main():
 				socket.inet_aton(a)
 			except socket.error:
 				print '[-] Invalid IP entered!' + a
-				sys.exit(1)
+				sys.exit()
 
 	#require at least one argument
 	if not (args.domain or args.ipaddress):
@@ -98,9 +97,10 @@ def main():
 		args.googledork is None and \
 		args.shodan is None and \
 		args.creds is False and \
+		args.scraper is False and \
 		args.pastebinsearch is None):
 		print '[-] No options specified, use -h or --help for a list'
-		sys.exit(1)
+		sys.exit()
 
 	#check to see if an ip or domain name was entered
 	if args.domain is not None:
@@ -124,7 +124,45 @@ def main():
 	pastebin_search(args, lookup)
 	the_harvester(args, lookup)
 	credential_leaks(args, lookup, startTime)
+	scrape_sites(args, lookup)
 	#write_report(args, googleResultWrite, whoisResultWrite, dnsResultWrite, shodanResultWrite)
+
+#*******************************************************************************
+def scrape_sites(args, lookup):
+	if args.scraper is not None:
+		
+		
+
+		for i,l in enumerate(lookup):
+
+			print '[+] Scraping sites using '+l
+
+			scrapeFile=open(''.join(l)+'_scrape.txt', 'w')
+
+			for a in args.scraper:
+
+				#init list and insert domain with tld stripped
+				scrapeUrls =['http://www.indeed.com/cmp/%s/jobs?q=%s' % (l.split('.')[0], a)]
+
+				for url in scrapeUrls:
+					if args.verbose is True:print '[+] Grabbing '+url
+					try:
+						req = urllib2.Request(url)
+						print 'Opening ' + url
+						scrapeContent = urllib2.urlopen(req).read()
+						time.sleep(1)
+						#scrapeContent.append()
+						scrapeFile.writelines(scrapeContent)
+						
+					except Exception:
+						pass
+
+					#for y in scrapeResult:
+						#scrapeFile.writelines(scrapeContent)
+
+	else:
+		print 'You need to provide keywords to scrape '
+		sys.exit()
 
 #*******************************************************************************
 #queries whois of ip or domain set in lookup, dumps to stdout if -v is set, writes to file either way
