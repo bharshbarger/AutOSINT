@@ -3,6 +3,14 @@ Tool to automate common osint tasks. Probably best run on Kali.
 
 A project to try to automate some common things checked during open source intelligence gathering engagements.
 
+Dependencies: git, python-docx, python shodan, python google, python dns
+Installation:
+
+$ git clone https://github.com/bharshbarger/AutOSINT.git
+$ chmod +x AutOSINT.py
+
+
+
 
 usage: AutOSINT.py [-h] [-d DOMAIN [DOMAIN ...]]
 
