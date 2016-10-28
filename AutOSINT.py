@@ -26,7 +26,7 @@ import sys
 import time
 import argparse
 import subprocess
-import dns.resolver
+#import dns.resolver
 import socket
 import urllib2
 import shodan
@@ -176,8 +176,7 @@ def main():
 		scrape_sites(args, lookup, reportDir)
 
 	#always run the report
-	write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, pasteScrapeContent, \
-		harvesterResult)
+	write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, pasteScrapeContent, harvesterResult)
 
 
 #*******************************************************************************
@@ -480,11 +479,11 @@ def the_harvester(args, lookup, reportDir):
 
 			#run harvester with -b google on lookup
 			print '[+] Running theHarvester -b google -d %s against google' % l
-			harvesterGoogleCmd = subprocess.Popen(['./theharvester', '-b', 'google', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
+			harvesterGoogleCmd = subprocess.Popen(['theharvester', '-b', 'google', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
 
 			#run harvester with -b linkedin on lookup
 			print '[+] Running theHarvester -b linkedin -d %s against linkedin' % l
-			harvesterLinkedinCmd = subprocess.Popen(['./theharvester', '-b', 'linkedin', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
+			harvesterLinkedinCmd = subprocess.Popen(['theharvester', '-b', 'linkedin', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
 
 			#append lists together
 			harvesterResult.append(harvesterGoogleCmd)
@@ -500,8 +499,8 @@ def the_harvester(args, lookup, reportDir):
 			for h in harvesterResult: print '\n'.join(h)
 
 
-			#return list object
-			return harvesterResult
+		#return list object
+		return harvesterResult
 
 
 
@@ -618,8 +617,7 @@ def pyfoca(args, lookup, reportDir):
 #*******************************************************************************
 #*******************************************************************************
 
-def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, pasteScrapeContent, \
-	harvesterResult):
+def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, pasteScrapeContent, harvesterResult):
 
 	for l in lookup:
 
