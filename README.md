@@ -12,6 +12,10 @@ $ chmod +x AutOSINT.py
 
 $ pip install --upgrade pip (optional)
 
+(if missing modules:)
+
+$ sudo apt install python-dns
+
 
 
 
