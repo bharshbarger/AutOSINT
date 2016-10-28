@@ -1,1 +1,5 @@
-Report contents will appear here
+Report contents will appear here in subdirectories named for domains searched, with results in there. 
+
+e.g
+
+/reports/google.com/google.com_whois.txt
