@@ -3,7 +3,7 @@ Tool to automate common osint tasks. Probably best run on Kali.
 
 A project to try to automate some common things checked during open source intelligence gathering engagements.
 
-Dependencies: whois, host, git, python-docx,  shodan,  google, theHarvester, pyFoca, a hashcat style pot file, a list of hacked accounts (like linkedin) in format user:hash
+Dependencies: whois, host, git, python-docx, python shodan, python google, theHarvester(https://github.com/laramies/theHarvester), pyFoca(https://github.com/altjx/ipwn), a hashcat style pot file, a list of hacked accounts (like linkedin) in format user:hash
 
 Installation:
 
