@@ -7,7 +7,10 @@ Dependencies: git, python-docx, python shodan, python google, python dns
 Installation:
 
 $ git clone https://github.com/bharshbarger/AutOSINT.git
+
 $ chmod +x AutOSINT.py
+
+$ pip install --upgrade pip (optional)
 
 
 
