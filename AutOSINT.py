@@ -18,6 +18,10 @@
 # read pw/keys from github
 # accept cidr input - todo
 
+
+#todo
+#reporting dorks, keys, training, get foca working
+
 import sys
 import time
 import argparse
@@ -27,6 +31,7 @@ import socket
 import urllib2
 import shodan
 import docx
+from docx.shared import Pt
 import re
 import os
 from google import search
@@ -43,21 +48,23 @@ def main():
 	#parse input, nargs allows one or more to be entered
 	#https://docs.python.org/3/library/argparse.html
 	parser = argparse.ArgumentParser()
-	parser.add_argument('-d', '--domain', nargs = '+', help = 'the Domain(s) you want to search.')
-	parser.add_argument('-i', '--ipaddress', nargs = '+', help = 'the IP address(es) you want to search. Must be a valid IP. ')
 	parser.add_argument('-a', '--all', help = 'run All queries', action = 'store_true')
-	parser.add_argument('-w', '--whois', help = 'query Whois for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
-	parser.add_argument('-n', '--nslookup',help = 'Name query DNS for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
-	parser.add_argument('-g', '--googledork', nargs = '+', help = 'query Google for supplied args that are treated as a dork. i.e. -g password becomes a search for "password site:<domain>"')
-	parser.add_argument('-s', '--shodan', nargs = 1, help = 'query Shodan, optionally provide -s <apikey>')
-	parser.add_argument('-v', '--verbose', help = 'Verbose', action = 'store_true')
-	parser.add_argument('-p', '--pastebinsearch', nargs = '+', help = 'Search google for <arg> site:pastebin.com. Requires a pro account if you dont want to get blacklisted')
-	parser.add_argument('-t', '--theharvester', help = 'Invoke theHarvester', action = 'store_true')
 	parser.add_argument('-c', '--creds', help = 'Search local copies of credential dumps', action = 'store_true')
-	parser.add_argument('-S', '--scraper', nargs = '+', help = 'Scrape pastebin, github, indeed, more to be added. Args are scrape keywords if applicable')
+	parser.add_argument('-d', '--domain', nargs = '+', help = 'the Domain(s) you want to search.')
 	parser.add_argument('-f', '--foca', help = 'invoke pyfoca', action = 'store_true')
+	parser.add_argument('-g', '--googledork', nargs = '+',help = 'query Google for supplied args that are treated as a dork. i.e. -g password becomes a search for "password site:<domain>" no option defaults to "password"')
+	parser.add_argument('-i', '--ipaddress', nargs = '+', help = 'the IP address(es) you want to search. Must be a valid IP. ')
+	parser.add_argument('-n', '--nslookup',help = 'Name query DNS for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
+	parser.add_argument('-p', '--pastebinsearch', nargs = '+', help = 'Search google for <arg> site:pastebin.com. Requires a pro account if you dont want to get blacklisted. Default arg is "password"')
+	parser.add_argument('-s', '--shodan', nargs = 1, help = 'query Shodan, optionally provide -s <apikey>')
+	parser.add_argument('-S', '--scraper', nargs = '+', help = 'Scrape pastebin, github, indeed, more to be added. Args are scrape keywords if applicable')
+	parser.add_argument('-t', '--theharvester', help = 'Invoke theHarvester', action = 'store_true')
+	parser.add_argument('-v', '--verbose', help = 'Verbose', action = 'store_true')	
+	parser.add_argument('-w', '--whois', help = 'query Whois for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
+	
 	args = parser.parse_args()
 
+	#verbosity flag to print logo and args
 	if args.verbose is True:print '''
     _         _    ___  ____ ___ _   _ _____ 
    / \  _   _| |_ / _ \/ ___|_ _| \ | |_   _|
@@ -68,17 +75,17 @@ def main():
 	if args.verbose is True:print 'AutOSINT.py v0.1, a way to do some automated OSINT tasks\n'
 	if args.verbose is True:print args
 
-	#set all if -a
+
+
+	#set True on action store_true args if -a
 	if args.all is True:
-		args.whois = True
-		args.nslookup = True
-		args.shodan = True
-		args.theharvester = True
 		args.creds = True
-		args.scraper = True
+		args.foca = True
+		args.nslookup = True
+		args.theharvester = True
+		args.whois = True
 
-
-	#validate entered IP address? do we even care? i and d do the same shit
+	#validate entered IP address? do we even care about IP address? i and d do the same shit
 	if args.ipaddress is not None:
 		for a in args.ipaddress:
 			try:
@@ -89,7 +96,8 @@ def main():
 
 	#require at least one argument
 	if not (args.domain or args.ipaddress):
-	    parser.error('No action requested, add domain(s) or IP address(es)\n')
+	    parser.error('No OSINT reference provided, add domain(s) or IP address(es)\n')
+	    sys.exit()
 
 	#if no queries defined, exit
 	if (args.whois is False and \
@@ -97,7 +105,8 @@ def main():
 		args.googledork is None and \
 		args.shodan is None and \
 		args.creds is False and \
-		args.scraper is False and \
+		args.scraper is None and \
+		args.theharvester is False and \
 		args.pastebinsearch is None):
 		print '[-] No options specified, use -h or --help for a list'
 		sys.exit()
@@ -106,126 +115,165 @@ def main():
 	if args.domain is not None:
 		for d in args.domain:
 			lookup = args.domain
+			for l in lookup:
+				reportDir='./reports/'+l+'/'
+				#check directories
+				if not os.path.exists(reportDir):
+					os.makedirs(reportDir)
 	else:
 		for i in args.ipaddress:
 			lookup = args.ipaddress
+			for l in lookup:
+					reportDir='./reports/'+l+'/'
+					#check directories
+					if not os.path.exists(reportDir):
+						os.makedirs(reportDir)
 
 	if args.verbose is True:
 		print "lookup value is "+ str(lookup)
 
-
-
-
-	#call functions
-	whois_search(args, lookup)
-	dns_search(args, lookup)
-	google_search(args, lookup)
-	shodan_search(args, lookup)
-	pastebin_search(args, lookup)
-	the_harvester(args, lookup)
-	credential_leaks(args, lookup, startTime)
-	scrape_sites(args, lookup)
-	#write_report(args, googleResultWrite, whoisResultWrite, dnsResultWrite, shodanResultWrite)
-
-#*******************************************************************************
-def scrape_sites(args, lookup):
-	if args.scraper is not None:
-		
+	#init results lists
 	
-		for i,l in enumerate(lookup):
+	whoisResult =[]
+	dnsResult = []
+	googleResult =[]
+	shodanResult = []
+	pasteScrapeResult = []
+	pasteScrapeContent = []
+	harvesterResult =[]
 
-			print '[+] Scraping sites using '+l
 
-			scrapeFile=open(''.join(l)+'_scrape.html', 'w')
-
-			for a in args.scraper:
-
-				#init list and insert domain with tld stripped
-				scrapeUrls =['http://www.indeed.com/cmp/%s/jobs?q=%s' % (l.split('.')[0], a),\
-				'https://github.com/search?q=%s&type=Code&ref=searchresults' % (l.split('.')[0]),\
-				'https://www.glassdoor.com/Reviews/company-reviews.htm?suggestCount=0&suggestChosen=false&clickSource=searchBtn&typedKeyword=%s&sc.keyword=%s&locT=&locId=' % (l.split('.')[0],l.split('.')[0])]
-
-				for url in scrapeUrls:
-					if args.verbose is True:print '[+] Grabbing '+url
-					try:
-						req = urllib2.Request(url)
-						print 'Opening ' + url
-						scrapeContent = urllib2.urlopen(req).read()
-						time.sleep(1)
-						#scrapeContent.append()
-						scrapeFile.writelines(scrapeContent)
-						
-					except Exception:
-						pass
-
-					#for y in scrapeResult:
-						#scrapeFile.writelines(scrapeContent)
-
-	else:
-		print 'You need to provide keywords to scrape '
-		sys.exit()
-
-#*******************************************************************************
-#queries whois of ip or domain set in lookup, dumps to stdout if -v is set, writes to file either way
-def whois_search(args, lookup):
-
-	#invoke if option set
+	#call function if -w arg
 	if args.whois is True:
-
-		#init results list
-		whoisResult = []
-
-		#iterate the index and values of the lookup list
-		for i, l in enumerate(lookup):
-			print '[+] Performing whois query ' + str(i + 1) + ' for ' + l
-			
-			whoisFile=open(''.join(l)+'_whois.txt','w')
-
-			#subprocess open the whois command for current value of "l" in lookup list. 
-			#split into newlines instead of commas
-			whoisCmd = subprocess.Popen(['whois',l], stdout = subprocess.PIPE).communicate()[0].split('\n')
-
-			#append lists together
-			whoisResult.append(whoisCmd)
-
-			#write the file
-			for r in whoisResult:
-				whoisFile.writelines('\n'.join(r))
-			
-			#verbosity logic
-			if args.verbose is True:
-				for w in whoisResult: print '\n'.join(w)
-
-		return whoisResult
-#*******************************************************************************
-def dns_search(args, lookup):
-	#DNS query, dumps out a list
+		whoisResult = whois_search(args, lookup, reportDir)
 	
-		#invoke if option set
-		if args.nslookup is True:
-			
-			#init results list
-			dnsResult = []
-			
-			#iterate the index and values of the lookup list
-			for i, l in enumerate(lookup):
-				print '[+] Performing DNS query #'+ str(i + 1) + ' using "host -a " ' + l
-				dnsFile=open(''.join(l)+'_dns.txt','a')
-				#subprocess to run host -a on the current value of l in the loop, split into newlines
-				dnsCmd = subprocess.Popen(['host', '-a', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\n')
+	#call function if -n arg
+	if args.nslookup is True:
+		dnsResult = dns_search(args, lookup, reportDir)
+	
+	#call function if -g arg
+	if args.googledork is not None:
+		googleResult=google_search(args, lookup, reportDir)
 
-				#append lists together
-				dnsResult.append(dnsCmd)
+	#call function if -s arg
+	if args.shodan is not None:
+		shodan_search(args, lookup, reportDir)
+	
+	#call function if -p arg
+	if args.pastebinsearch is not None:
+		pastebin_search(args, lookup, reportDir)
+	
+	# call function if -t arg
+	if args.theharvester is True:
+		harvesterResult=the_harvester(args, lookup, reportDir)
+	
+	#call function if -c arg 
+	if args.creds is True:
+		credential_leaks(args, lookup, startTime, reportDir)
+	
+	#call function if -S arg
+	if args.scraper is not None:
+		scrape_sites(args, lookup, reportDir)
 
-				for r in dnsResult:
-					dnsFile.writelines('\n'.join(r))
+	#always run the report
+	write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, pasteScrapeContent, \
+		harvesterResult)
 
-				#print dnsResult if -v
-				if args.verbose is True:
-					for d in dnsResult: print '\n'.join(d)
 
-			#return list object
-			return dnsResult
+#*******************************************************************************
+#hibp api search to implement
+#https://haveibeenpwned.com/API/v2
+def hibp_search(args, lookup, reportDir):
+	print 'coming soon'
+#*******************************************************************************
+def scrape_sites(args, lookup, reportDir):
+
+	for i,l in enumerate(lookup):
+
+		print '[+] Scraping sites using '+ l
+
+		scrapeFile=open(reportDir+''.join(l)+'_scrape.html', 'w')
+
+		for a in args.scraper:
+
+			#init list and insert domain with tld stripped
+			#insert lookup value into static urls
+			scrapeUrls =['http://www.indeed.com/cmp/%s/jobs?q=%s' % (l.split('.')[0], a),\
+			'https://github.com/search?q=%s&type=Code&ref=searchresults' % (l.split('.')[0]),\
+			'https://www.glassdoor.com/Reviews/company-reviews.htm?suggestCount=0&suggestChosen=false&clickSource=searchBtn&typedKeyword=%s&sc.keyword=%s&locT=&locId=' % (l.split('.')[0],l.split('.')[0]), \
+			'http://www.slideshare.net/%s' % (l.split('.')[0])]
+
+			for url in scrapeUrls:
+				if args.verbose is True:print '[+] Grabbing '+url
+				try:
+					req = urllib2.Request(url)
+					print 'Opening ' + url
+					scrapeContent = urllib2.urlopen(req).read()
+					time.sleep(1)
+					#scrapeContent.append()
+					scrapeFile.writelines(scrapeContent)
+					
+				except Exception:
+					pass
+			return scrapeResult
+
+
+#*******************************************************************************
+#queries whois of ip or domain set in lookup, dumps to stdout if -v is set, writes to txt file either way.
+#returns whoisResult for use in report
+def whois_search(args, lookup, reportDir):
+
+	whoisResult=[]
+
+	#iterate the index and values of the lookup list
+	for i, l in enumerate(lookup):
+		print '[+] Performing whois query ' + str(i + 1) + ' for ' + l
+		
+		whoisFile=open(reportDir+''.join(l)+'_whois.txt','w')
+
+		#subprocess open the whois command for current value of "l" in lookup list. 
+		#split into newlines instead of commas
+		whoisCmd = subprocess.Popen(['whois',l], stdout = subprocess.PIPE).communicate()[0].split('\n')
+
+		#append lists together
+		whoisResult.append(whoisCmd)
+
+		#write the file
+		for r in whoisResult:
+			whoisFile.writelines('\n'.join(r))
+		
+		#verbosity logic
+		if args.verbose is True:
+			for w in whoisResult: print '\n'.join(w)
+
+	return whoisResult
+#*******************************************************************************
+#DNS query, dumps out a list
+#retruns dnsResult for use in report
+
+def dns_search(args, lookup, reportDir):
+	
+	dnsResult=[]
+
+	#iterate the index and values of the lookup list
+	for i, l in enumerate(lookup):
+		print '[+] Performing DNS query '+ str(i + 1) + ' using "host -a  ' + l+'"'
+		dnsFile=open(reportDir+''.join(l)+'_dns.txt','a')
+		#subprocess to run host -a on the current value of l in the loop, split into newlines
+		dnsCmd = subprocess.Popen(['host', '-a', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\n')
+
+		#append lists together
+		dnsResult.append(dnsCmd)
+
+		for r in dnsResult:
+			dnsFile.writelines('\n'.join(r))
+
+		#print dnsResult if -v
+		if args.verbose is True:
+			for d in dnsResult: print '\n'.join(d)
+
+	#return list object
+	return dnsResult
 
 #*******************************************************************************
 # this could be GREATLY improved.
@@ -235,56 +283,51 @@ def dns_search(args, lookup):
 # uses this awesome module https://pypi.python.org/pypi/google
 # requires beautifulsoup
 
-def google_search(args, lookup):
+def google_search(args, lookup, reportDir):
+	#need a default dork list
 
+	#C58EA28C-18C0-4a97-9AF2-036E93DDAFB3 is string for open OWA attachments
 	# check for empty args
-	if args.googledork is not None:
+	#init lists
+	googleResult = []
 
-		#because i fail at logic
-		if args.googledork is None:
-			print '[-] No Google dork(s) defined! Set with -g <dork(s)> Skipping!!!'
-			return
+	for d in args.googledork:
+		
+		#iterate the lookup list
+		for i, l in enumerate(lookup):
+			googleFile=open(reportDir+''.join(l)+'_google_dork_'+d+'.txt','w')
 
-		for d in args.googledork:
+			#show user whiat is being searched
+			print '[+] Google query ' + str(i + 1) + ' for " '+str(d)+' ' + 'site:'+str(l) + ' "'
 			
-
-			#init list
-			googleResult = []
-
-			#iterate the lookup list
-			for i, l in enumerate(lookup):
-				googleFile=open(''.join(l)+'_google_dork.txt','w')
-
-				#show user whiat is being searched
-				print '[+] Google query ' + str(i + 1) + ' for " '+str(d)+' ' + 'site:'+str(l) + ' "'
-				
-				try:
-					#iterate url results from search of password(for now) and site:current list value
-					for url in search(str(d)+ ' ' + 'site:'+str(l), stop = 20):
-						
-						#append results together
-						googleResult.append(url)
-
-						#rate limit to 1 per second
-						time.sleep(1)
-				#catch exceptions
-				except Exception:
-					pass
-
-			for r in googleResult:
-				googleFile.writelines(r + '\r\n')
-
-			#verbosity flag
-			if args.verbose is True:
-				for r in googleResult: print ''.join(r)
+			try:
+				#iterate url results from search of password(for now) and site:current list value
+				for url in search(str(d)+ ' ' + 'site:'+str(l), stop = 20):
 					
-			#return results list
-			return googleResult
+					#append results together
+					googleResult.append(url)
+
+					#rate limit to 1 per second
+					time.sleep(1)
+			#catch exceptions
+			except Exception:
+				pass
+		#iterate results
+		for r in googleResult:
+			#write results on newlines
+			googleFile.writelines(r + '\r\n')
+
+		#verbosity flag
+		if args.verbose is True:
+			for r in googleResult: print ''.join(r)
+				
+		#return results list
+		return googleResult
 	
 		
 
 #*******************************************************************************
-def shodan_search(args, lookup):
+def shodan_search(args, lookup, reportDir):
 	#probably need to customize search type based on -i or -d		
 	#first if  https://shodan.readthedocs.io/en/latest/tutorial.html#connect-to-the-api
 	#else https://shodan.readthedocs.io/en/latest/tutorial.html#looking-up-a-host
@@ -304,7 +347,7 @@ def shodan_search(args, lookup):
 		shodanApi = shodan.Shodan(shodanApiKey)
 
 		#open output file
-		shodanFile=open(''.join(lookup)+'_shodan.txt','w')
+		shodanFile=open(reportDir+''.join(lookup)+'_shodan.txt','w')
 		
 		#roll through the lookup list from -i or -d
 		for i, l in enumerate(lookup):
@@ -325,6 +368,7 @@ def shodan_search(args, lookup):
 				return
 				
 		#verbosity logic
+		#add iterator to dump all results
 		if args.verbose is True:
 			print 'Results found: %s' % results['total']
 			print 'IP: %s' % result['ip_str']
@@ -344,11 +388,14 @@ def shodan_search(args, lookup):
 #right now this just google dorks a supplied arg for site:pastebin.com
 #need to implement scraping api http://pastebin.com/api_scraping_faq
 #scraping url is here http://pastebin.com/api_scraping.php
-def pastebin_search(args, lookup):
+def pastebin_search(args, lookup, reportDir):
 	
 	# check for empty args
 	if args.pastebinsearch is not None:
 		print '[!] requires a Pastebin Pro account for IP whitelisting'
+
+		pasteScrapeResult = []
+		pasteScrapeContent = []
 
 		if args.pastebinsearch is None:
 			print '[-] No pastebin search string provided. Skipping! Provide with -p <search items>'
@@ -362,8 +409,8 @@ def pastebin_search(args, lookup):
 			#iterate the lookup list
 			for i, l in enumerate(lookup):
 
-				scrapedFile=open(''.join(l)+'_pastebin_content.txt','w')
-				pasteUrlFile=open(''.join(l)+'_pastebin_urls.txt','w')
+				scrapedFile=open(reportDir+''.join(l)+'_pastebin_content.txt','w')
+				pasteUrlFile=open(reportDir+''.join(l)+'_pastebin_urls.txt','w')
 				#show user whiat is being searched
 				print 'Google query #' + str(i + 1) + ' for '+  str(a) +' '+ str(l) + ' site:pastebin.com'
 				
@@ -406,60 +453,61 @@ def pastebin_search(args, lookup):
 			for c in scrapeContent: print ' '.join(c)'''
 
 		#return results list
-		return scrapeResult
-		return scrapeContent
+		return pasteScrapeResult
+		return pasteScrapeContent
 
 	
 
 		
 
 #*******************************************************************************
-def the_harvester(args, lookup):
+def the_harvester(args, lookup, reportDir):
 
 	#https://github.com/laramies/theHarvester
 	if args.theharvester is True:
-		print '[+] Running theHarvester against google and linkedin'
+		
 		#init lists
 		harvested = []
 		harvesterGoogleResult = []
 		harvesterLinkedinResult = []
+		harvesterResult=[]
 
 		#based on domain or ip, enumerate with index and value
 		for i, l in enumerate(lookup):
 
 			#open file to write to
-			harvesterFile=open(''.join(l)+'_theharvester.txt','w')
+			harvesterFile=open(reportDir+''.join(l)+'_theharvester.txt','w')
 
 			#run harvester with -b google on lookup
+			print '[+] Running theHarvester -b google -d %s against google' % l
 			harvesterGoogleCmd = subprocess.Popen(['./theharvester', '-b', 'google', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
 
 			#run harvester with -b linkedin on lookup
+			print '[+] Running theHarvester -b linkedin -d %s against linkedin' % l
 			harvesterLinkedinCmd = subprocess.Popen(['./theharvester', '-b', 'linkedin', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
 
 			#append lists together
-			harvesterGoogleResult.append(harvesterGoogleCmd)
-			harvesterLinkedinResult.append(harvesterLinkedinCmd)
+			harvesterResult.append(harvesterGoogleCmd)
+			harvesterResult.append(harvesterLinkedinCmd)
 
 			#append resutls and write to lookup result file
-			for r in harvesterGoogleResult:
+			for r in harvesterResult:
 				harvesterFile.writelines(r)
 
-			for j in harvesterLinkedinResult:
-				harvesterFile.writelines(j)
 				
 		#verbosity
 		if args.verbose is True:
-			for g in harvesterGoogleResult: print '\n'.join(g)
-			for i in harvesterLinkedinResult: print '\n'.join(i)
+			for h in harvesterResult: print '\n'.join(h)
+
 
 			#return list object
-			return harvesterGoogleResult
-			return harvesterLinkedinResult
+			return harvesterResult
+
 
 
 
 #*******************************************************************************
-def credential_leaks(args, lookup, startTime):
+def credential_leaks(args, lookup, startTime, reportDir):
 	#grep through local copies of various password database dumps. 
 	#compares to a hashcat potfile as well
 	#you'll need a ./credleaks directory and a ./potfile directory populated
@@ -484,10 +532,12 @@ def credential_leaks(args, lookup, startTime):
 	
 		#for each domain/ip provided
 		for l in lookup:
-			credFile=open(''.join(l)+'_creds.txt','w')
+			credFile=open(reportDir+''.join(l)+'_creds.txt','w')
 
 			#init dictionary
 			dumpDict={}
+			credReportUsers=[]
+			credReportPass=[]
 
 			#overall, take the lookup value (preferably a domain) and search the dumps for it
 			#for each file in ./credleaks directory
@@ -525,6 +575,7 @@ def credential_leaks(args, lookup, startTime):
 			credFile.writelines('********EMAILS FOUND BELOW********\n\n\n\n')
 			for h, u in dumpDict.items():
 				credFile.writelines(str(u)+'\n')
+				credReportUsers.append(str(u)+'\n')
 				
 			credFile.writelines('********CREDENTIALS FOUND BELOW*********\n\n\n\n')
 			
@@ -544,54 +595,150 @@ def credential_leaks(args, lookup, startTime):
 								print str(u)+':'+str(potLine.rstrip("\r\n"))
 								#need to append the output to a variable to return or write to the file
 								credFile.writelines(str(u)+':'+str(potLine[len(h):]))
+								credReportPass.append(str(u)+':'+str(potLine[len(h):]))
+
+			return credReportUsers
+			return credReportPass
 
 #*******************************************************************************
-def pyfoca():
+def pyfoca(args, lookup, reportDir):
 	if args.whois is True:
 		print "foca"
 #*******************************************************************************
-	
-
+#viewdns.info
+#http://viewdns.info/api/
+#*******************************************************************************
+#he bgp info
+#http://bgp.he.net/dns/rapid7.com#_ipinfo
+#*******************************************************************************
+#active osint:
+#zone transfer
+#ike endpoints
+#http screnshots
+#*******************************************************************************
 #*******************************************************************************
 
-def write_report(args, googleResultWrite, whoisResultWrite, dnsResultWrite, shodanResultWrite):
-	
-	google = "No Google Results"
+def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, pasteScrapeContent, \
+	harvesterResult):
+
+	for l in lookup:
+
+		whois=None
+		dns=None
+		shodan=None
+		pasteUrl=None
+		pasteContent=None
+		harvestG=None
+		harvestL=None
 
 
-	if whoisResultWrite is not None:
-		for w in whoisResultWrite: whois = (''.join(w))
-	else:
-		whois = "No Whois results"
+		if whoisResult is not None:
+			for w in whoisResult: whois = ('\n'.join(w))
+		else:
+			whois = "No Whois results"
+
+		if dnsResult is not None:
+			for d in dnsResult: dns = ('\n'.join(d))
+		else:
+			dns = 'No DNS results'
+
+		if shodanResult is not None:
+			for s in shodanResult: shodan = (''.join(s))
+		else:
+			shodan = 'No shodan results'
+
+
+		if pasteScrapeResult is not None:
+			for psr in pasteScrapeResult: pasteUrl = (''.join(psr))
+		else:
+			pasteUrl = 'No pastebin urls found'
+
+		if pasteScrapeContent is not None:
+			for psc in pasteScrapeContent: pasteContent = (''.join(psc))
+		else:
+			pasteContent = 'No pastebin content found'
+
 		
-	if googleResultWrite is not None:
-		for r in googleResultWrite: google=(''.join(r))
-	
-			
-	
-	if dnsResultWrite is not None:
-		for d in dnsResultWrite: dns = (''.join(d))
-	else:
-		dns = "no DNS results"
 
 
 
-	print 'Writing results of your query options for to a .docx into the current directory'
-	#dump to a word doc
-	doc = docx.Document()
-	doc.add_paragraph('Sample Output')
-	doc.add_paragraph('Google search for the word password')
-	doc.add_paragraph(str(google))
+		#dump to a word doc
+		#refs
+		#https://python-docx.readthedocs.io/en/latest/user/text.html
+		#https://python-docx.readthedocs.io/en/latest/user/quickstart.html
+		
+		#create a document 
+		document = docx.Document()
 
-	doc.add_paragraph('Whois Results')
-	doc.add_paragraph(str(whois))
+		#need font stuff here?
 
-	doc.add_paragraph('DNS Lookup Results')
-	doc.add_paragraph(str(dns))
+		#add boilerplate header
+		document.add_heading('Open Source Intelligence Report for %s' % l, level=2)
+		
+		#add boilerplate intro 
+		document.add_paragraph('This document contains data obtained by programatically quering various free or low cost Internet data sources')
+		document.add_paragraph('These data include information about the network, technology, and people associated with the targets')
+		
+		#break
+		document.add_page_break()
+		
 
-	doc.add_paragraph('Shodan query results')
-	doc.add_paragraph(shodanResultWrite)
-	doc.save('OSINT.docx')
+		#add whois data with header and break after end
+		document.add_heading('Whois Data for %s' % l , level=3)
+		paragraph = document.add_paragraph()
+		runParagraph = paragraph.add_run(whois)
+		#set font stuff
+		font=runParagraph.font
+		font.name = 'Arial'
+		font.size = Pt(10)
+		document.add_page_break()
+		
+		#add dns data with header and break after end
+		document.add_heading('Domain Name System Data for %s' % l, level=3)
+		paragraph = document.add_paragraph()
+		runParagraph = paragraph.add_run(dns)
+		#set font stuff
+		font=runParagraph.font
+		font.name = 'Arial'
+		font.size = Pt(10)
+		document.add_page_break()
+
+		#dork output
+		document.add_heading('Google Dork Results for %s' % l, level=3)
+		paragraph = document.add_paragraph()
+		for r in googleResult:
+			runParagraph = paragraph.add_run(''.join(r))
+		#set font stuff
+		font=runParagraph.font
+		font.name = 'Arial'
+		font.size = Pt(10)
+		document.add_page_break()
+		
+		#harvester output
+		document.add_heading('theHarvester Results for %s' % l, level=3)
+		paragraph = document.add_paragraph()
+		for h in harvesterResult: 
+			runParagraph = paragraph.add_run(''.join(h))
+		#set font stuff
+		font=runParagraph.font
+		font.name = 'Arial'
+		font.size = Pt(10)
+
+
+		document.add_paragraph(shodan)
+		document.add_page_break()
+		
+
+		document.add_paragraph(pasteUrl)
+		document.add_page_break()
+		
+
+		document.add_paragraph(pasteContent)
+		document.add_page_break()
+
+
+		print '[+] Writing file OSINT_%s_.docx in ./reports/%s'  % (l, l)
+		document.save(reportDir+'OSINT_%s_.docx' % l)
 
 
 if __name__ == '__main__':
