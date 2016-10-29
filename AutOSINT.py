@@ -91,12 +91,12 @@ def main():
 			try:
 				socket.inet_aton(a)
 			except socket.error:
-				print '[-] Invalid IP entered!' + a
+				print '[-] Invalid IP address entered!' + a
 				sys.exit()
 
 	#require at least one argument
 	if not (args.domain or args.ipaddress):
-	    parser.error('No OSINT reference provided, add domain(s) or IP address(es)\n')
+	    parser.error('[-] No OSINT reference provided, add domain(s) with -d or IP address(es) with -i\n')
 	    sys.exit()
 
 	#if no queries defined, exit
@@ -130,7 +130,7 @@ def main():
 						os.makedirs(reportDir)
 
 	if args.verbose is True:
-		print "lookup value is "+ str(lookup)
+		print "[+] Lookup value is "+ str(lookup)
 
 	#init results lists
 	
@@ -289,6 +289,9 @@ def google_search(args, lookup, reportDir):
 	# check for empty args
 	#init lists
 	googleResult = []
+
+	if args.googledork is None:
+		args.googledork=['password']
 
 	for d in args.googledork:
 		
@@ -583,7 +586,7 @@ def credential_leaks(args, lookup, startTime, reportDir):
 				#open a pot file
 				with open('./potfile/'+potFileName, 'r') as potFile:
 					#then look at every line
-					print '[!] Any creds you have in your potfile will appear below as user:hash:plain : '
+					print '[i] Any creds you have in your potfile will appear below as user:hash:plain : '
 					for potLine in potFile:
 						#then for every line look at every hash and user in the dict
 						for h, u in dumpDict.items():
@@ -722,11 +725,11 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		font.name = 'Arial'
 		font.size = Pt(10)
 
-
+		document.add_heading('Shodan Results for %s' % l, level=3)
 		document.add_paragraph(shodan)
 		document.add_page_break()
 		
-
+		document.add_heading('Pastebin URLs for %s' % l, level=3)
 		document.add_paragraph(pasteUrl)
 		document.add_page_break()
 		
