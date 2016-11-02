@@ -139,6 +139,7 @@ def main():
 	whoisResult=[]
 	dnsResult = []
 	googleResult =[]
+	shodanResult=[]
 	pasteScrapeResult = []
 	pasteScrapeContent = []
 	harvesterResult =[]
