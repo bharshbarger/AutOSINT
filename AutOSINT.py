@@ -39,6 +39,9 @@ import re
 import os
 from google import search
 import json
+import lxml
+from lxml.html.clean import Cleaner
+
 
 #python-docx: https://pypi.python.org/pypi/python-docx
 #shodan: https://github.com/achillean/shodan-python
@@ -143,6 +146,7 @@ def main():
 	pasteScrapeResult = []
 	pasteScrapeContent = []
 	harvesterResult =[]
+	scrapeResult=[]
 
 	#call function if -w arg
 	if args.whois is True:
@@ -174,11 +178,11 @@ def main():
 	
 	#call function if -S arg
 	if args.scraper is not None:
-		scrape_sites(args, lookup, reportDir)
+		scrapeResult=scrape_sites(args, lookup, reportDir)
 
 
 	#run the docx report. text files happen in the respective functions
-	write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, pasteScrapeContent, harvesterResult)
+	write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, pasteScrapeContent, harvesterResult, scrapeResult)
 
 
 #*******************************************************************************
@@ -191,6 +195,7 @@ def hibp_search(args, lookup, reportDir):
 #*******************************************************************************
 #censys
 #https://www.censys.io/ipv4?q=rapid7.com
+#*******************************************************************************
 #virustotal passive dns api
 #https://www.virustotal.com/en/documentation/public-api/#getting-domain-reports
 #*******************************************************************************
@@ -202,7 +207,7 @@ def hibp_search(args, lookup, reportDir):
 #*******************************************************************************
 
 def scrape_sites(args, lookup, reportDir):
-
+	scrapeResult=[]
 	for i,l in enumerate(lookup):
 
 		print '[+] Scraping sites using '+ l
@@ -218,6 +223,7 @@ def scrape_sites(args, lookup, reportDir):
 			'https://www.glassdoor.com/Reviews/company-reviews.htm?suggestCount=0&suggestChosen=false&clickSource=searchBtn&typedKeyword=%s&sc.keyword=%s&locT=&locId=' % (l.split('.')[0],l.split('.')[0]), \
 			'http://www.slideshare.net/%s' % (l.split('.')[0])]
 
+
 			for url in scrapeUrls:
 				if args.verbose is True:print '[+] Grabbing '+url
 				try:
@@ -225,12 +231,12 @@ def scrape_sites(args, lookup, reportDir):
 					print 'Opening ' + url
 					scrapeContent = urllib2.urlopen(req).read()
 					time.sleep(1)
-					#scrapeContent.append()
+					scrapeResult.append(scrapeContent)
 					scrapeFile.writelines(scrapeContent)
-					
 				except Exception:
 					pass
 			return scrapeResult
+
 
 
 #*******************************************************************************
@@ -659,7 +665,7 @@ def pyfoca(args, lookup, reportDir):
 #*******************************************************************************
 #*******************************************************************************
 
-def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, pasteScrapeContent, harvesterResult):
+def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, pasteScrapeContent, harvesterResult, scrapeResult):
 
 	for l in lookup:
 
@@ -792,17 +798,34 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 
 		document.add_heading('Shodan Results for %s' % l, level=3)
 		paragraph = document.add_paragraph()
-		with open(reportDir+''.join(lookup)+'_shodan.txt','r') as f:
-			line = f.read().splitlines()
-			for li in line:
-				runParagraph = paragraph.add_run(li.rstrip('\n\r ')+'\n')
-				#set font stuff
-				font=runParagraph.font
-				font.name = 'Arial'
-				font.size = Pt(10)
+		try:
+			with open(reportDir+''.join(lookup)+'_shodan.txt','r') as f:
+				line = f.read().splitlines()
+				for li in line:
+					runParagraph = paragraph.add_run(li.rstrip('\n\r ')+'\n')
+					#set font stuff
+					font=runParagraph.font
+					font.name = 'Arial'
+					font.size = Pt(10)
+		except:
+			break
 		
 		document.add_heading('Pastebin URLs for %s' % l, level=3)
 		document.add_paragraph(pasteUrl)
+		document.add_page_break()
+
+
+
+		#general scrape output. not going into docx just yet.
+		document.add_heading('Website Scraping Results for %s' % l, level=3)
+		paragraph = document.add_paragraph()
+		for sr in scrapeResult:
+			runParagraph = paragraph.add_run(sr)
+			#set font stuff
+			font=runParagraph.font
+			font.name = 'Arial'
+			font.size = Pt(10)
+
 		document.add_page_break()
 		
 
