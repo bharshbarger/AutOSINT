@@ -11,12 +11,16 @@
 # dns - added
 # shodan - added
 # scrape pastebin, etc.
-# google dorks via googlesearch. only does "password site:domain now"
+# google dorks via googlesearch.
 # BGP info - todo
 # AS info - todo
 # linkedin (from Nick)
 # read pw/keys from github
 # accept cidr input - todo
+
+#bugs
+#need newlines on google output in docx report
+#setting default  of 'password in argparse not liking default=['password']'
 
 
 #todo
@@ -26,7 +30,6 @@ import sys
 import time
 import argparse
 import subprocess
-#import dns.resolver
 import socket
 import urllib2
 import shodan
@@ -35,6 +38,7 @@ from docx.shared import Pt
 import re
 import os
 from google import search
+import json
 
 #python-docx: https://pypi.python.org/pypi/python-docx
 #shodan: https://github.com/achillean/shodan-python
@@ -52,7 +56,7 @@ def main():
 	parser.add_argument('-c', '--creds', help = 'Search local copies of credential dumps', action = 'store_true')
 	parser.add_argument('-d', '--domain', nargs = '+', help = 'the Domain(s) you want to search.')
 	parser.add_argument('-f', '--foca', help = 'invoke pyfoca', action = 'store_true')
-	parser.add_argument('-g', '--googledork', nargs = '+',help = 'query Google for supplied args that are treated as a dork. i.e. -g password becomes a search for "password site:<domain>" no option defaults to "password"')
+	parser.add_argument('-g', '--googledork', nargs = '*',help = 'query Google for supplied args that are treated as a dork. i.e. -g password becomes a search for "password site:<domain>"')
 	parser.add_argument('-i', '--ipaddress', nargs = '+', help = 'the IP address(es) you want to search. Must be a valid IP. ')
 	parser.add_argument('-n', '--nslookup',help = 'Name query DNS for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
 	parser.add_argument('-p', '--pastebinsearch', nargs = '+', help = 'Search google for <arg> site:pastebin.com. Requires a pro account if you dont want to get blacklisted.')
@@ -74,8 +78,6 @@ def main():
 
 	if args.verbose is True:print 'AutOSINT.py v0.1, a way to do some automated OSINT tasks\n'
 	if args.verbose is True:print args
-
-
 
 	#set True on action store_true args if -a
 	if args.all is True:
@@ -130,18 +132,16 @@ def main():
 						os.makedirs(reportDir)
 
 	if args.verbose is True:
-		print "[+] Lookup value is "+ str(lookup)
+		print "[+] Lookup value(s): "+ str(lookup)
 
 	#init results lists
 	
-	whoisResult =[]
+	whoisResult=[]
 	dnsResult = []
 	googleResult =[]
-	shodanResult = []
 	pasteScrapeResult = []
 	pasteScrapeContent = []
 	harvesterResult =[]
-
 
 	#call function if -w arg
 	if args.whois is True:
@@ -150,14 +150,14 @@ def main():
 	#call function if -n arg
 	if args.nslookup is True:
 		dnsResult = dns_search(args, lookup, reportDir)
-	
+
 	#call function if -g arg
 	if args.googledork is not None:
 		googleResult=google_search(args, lookup, reportDir)
 
 	#call function if -s arg
 	if args.shodan is not None:
-		shodan_search(args, lookup, reportDir)
+		shodanResult = shodan_search(args, lookup, reportDir)
 	
 	#call function if -p arg
 	if args.pastebinsearch is not None:
@@ -175,7 +175,8 @@ def main():
 	if args.scraper is not None:
 		scrape_sites(args, lookup, reportDir)
 
-	#always run the report
+
+	#run the docx report. text files happen in the respective functions
 	write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, pasteScrapeContent, harvesterResult)
 
 
@@ -185,6 +186,20 @@ def main():
 def hibp_search(args, lookup, reportDir):
 	print 'coming soon'
 #*******************************************************************************
+#ssl scan 
+#*******************************************************************************
+#censys
+#https://www.censys.io/ipv4?q=rapid7.com
+#virustotal passive dns api
+#https://www.virustotal.com/en/documentation/public-api/#getting-domain-reports
+#*******************************************************************************
+#https://dnsdumpster.com/
+#cool mapping of AS, etc
+#*******************************************************************************
+#passive dns
+
+#*******************************************************************************
+
 def scrape_sites(args, lookup, reportDir):
 
 	for i,l in enumerate(lookup):
@@ -290,30 +305,37 @@ def google_search(args, lookup, reportDir):
 	#init lists
 	googleResult = []
 
+	#if no args provided, default to 'password'
 	if args.googledork is None:
-		args.googledork=['password']
+		print '[i] No dork args, defaulting to "password"'
+		args.googledork = ['password']
 
-	for d in args.googledork:
-		
-		#iterate the lookup list
-		for i, l in enumerate(lookup):
-			googleFile=open(reportDir+''.join(l)+'_google_dork_'+d+'.txt','w')
+	else:
 
-			#show user whiat is being searched
-			print '[+] Google query ' + str(i + 1) + ' for " '+str(d)+' ' + 'site:'+str(l) + ' "'
+		for d in args.googledork:
+			if args.verbose is True:print 'dorking for %s' % d
 			
-			try:
-				#iterate url results from search of password(for now) and site:current list value
-				for url in search(str(d)+ ' ' + 'site:'+str(l), stop = 20):
-					
-					#append results together
-					googleResult.append(url)
+			#default to password if no arg
 
-					#rate limit to 1 per second
-					time.sleep(1)
-			#catch exceptions
-			except Exception:
-				pass
+			#iterate the lookup list
+			for i, l in enumerate(lookup):
+				googleFile=open(reportDir+''.join(l)+'_google_dork_'+str(d)+'.txt','w')
+
+				#show user whiat is being searched
+				print '[+] Google query ' + str(i + 1) + ' for "'+str(d)+' ' + 'site:'+str(l) + '"'
+				
+				try:
+					#iterate url results from search of password(for now) and site:current list value
+					for url in search(str(d)+ ' ' + 'site:'+str(l), stop = 20):
+						
+						#append results together
+						googleResult.append(url)
+
+						#rate limit to 1 per second
+						time.sleep(1)
+				#catch exceptions
+				except Exception:
+					pass
 		#iterate results
 		for r in googleResult:
 			#write results on newlines
@@ -344,6 +366,7 @@ def shodan_search(args, lookup, reportDir):
 		
 		#list that we'll return
 		shodanResult = []
+
 	
 		#invoke api with api key provided
 		shodanApi = shodan.Shodan(shodanApiKey)
@@ -353,15 +376,31 @@ def shodan_search(args, lookup, reportDir):
 		
 		#roll through the lookup list from -i or -d
 		for i, l in enumerate(lookup):
+
+			'''#maybe just do the rest here instead of api?
+			url='https://exploits.shodan.io/api/search?query='+str(l)+'&key='+str(shodanApiKey)
+			try:
+				req = urllib2.Request(url)
+				scrapeContent = urllib2.urlopen(req).read()
+				time.sleep(1)
+				print scrapeContent
+			except Exception:
+					pass'''
+
 			#user notification that something is happening
 			print '[+] Querying Shodan via API search for ' + l
 			try:
 				#set results to api search of current lookup value
+				#https://shodan.readthedocs.io/en/latest/examples/basic-search.html
 				results = shodanApi.search(l)
 				#for each result
 				for result in results['matches']:
 					#append to shodanResult list
-					shodanResult.append(str(results))
+					shodanResult.append(str(result))
+
+				'''exploits=shodanApi.exploits.search(l)
+				for ex in exploits:
+					shodanResult.append(str(ex))'''
 			#catch exceptions		
 			except shodan.APIError, e:
 				#print excepted error
@@ -372,19 +411,18 @@ def shodan_search(args, lookup, reportDir):
 		#verbosity logic
 		#add iterator to dump all results
 		if args.verbose is True:
-			print 'Results found: %s' % results['total']
-			print 'IP: %s' % result['ip_str']
-			print result['data']
+			print '[+] Results found: %s' % results['total']
 
 		#write contents of shodanResult list. this needs formatted
-		shodanFile.writelines('%s' % results['total'])
+		shodanFile.writelines('%s hosts found: \n\n' % results['total'])
 		for r in shodanResult:
-			shodanFile.writelines('%s' % result['ip_str'])
-			shodanFile.writelines('\n')
+			shodanFile.writelines('%s \n' % result['ip_str'])
 			shodanFile.writelines(result['data'])
 			shodanFile.writelines('****************\n')
 
 		return shodanResult
+
+
 	
 #*******************************************************************************
 #right now this just google dorks a supplied arg for site:pastebin.com
@@ -626,7 +664,6 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 
 		whois=None
 		dns=None
-		shodan=None
 		pasteUrl=None
 		pasteContent=None
 		harvestG=None
@@ -642,11 +679,6 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 			for d in dnsResult: dns = ('\n'.join(d))
 		else:
 			dns = 'No DNS results'
-
-		if shodanResult is not None:
-			for s in shodanResult: shodan = (''.join(s))
-		else:
-			shodan = 'No shodan results'
 
 
 		if pasteScrapeResult is not None:
@@ -674,12 +706,28 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		#need font stuff here?
 
 		#add boilerplate header
-		document.add_heading('Open Source Intelligence Report for %s' % l, level=2)
+		heading = document.add_heading()
+		runHeading = heading.add_run('Open Source Intelligence Report for %s' % l)
+		font=runHeading.font
+		font.name = 'Arial'
 		
-		#add boilerplate intro 
-		document.add_paragraph('This document contains data obtained by programatically quering various free or low cost Internet data sources')
-		document.add_paragraph('These data include information about the network, technology, and people associated with the targets')
+		#add boilerplate intro
+		paragraph = document.add_paragraph() 
+		runParagraph = paragraph.add_run('This document contains data obtained by programatically quering various free or low cost Internet data sources')
 		
+		#set font stuff
+		font=runParagraph.font
+		font.name = 'Arial'
+		font.size = Pt(10)
+
+		runParagraph = paragraph.add_run('These data include information about the network, technology, and people associated with the targets')
+		
+		
+
+		#set font stuff
+		font=runParagraph.font
+		font.name = 'Arial'
+		font.size = Pt(10)
 		#break
 		document.add_page_break()
 		
@@ -692,6 +740,7 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		font=runParagraph.font
 		font.name = 'Arial'
 		font.size = Pt(10)
+
 		document.add_page_break()
 		
 		#add dns data with header and break after end
@@ -702,32 +751,54 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		font=runParagraph.font
 		font.name = 'Arial'
 		font.size = Pt(10)
+
 		document.add_page_break()
 
 		#dork output
 		document.add_heading('Google Dork Results for %s' % l, level=3)
 		paragraph = document.add_paragraph()
 		for r in googleResult:
-			runParagraph = paragraph.add_run(''.join(r))
-		#set font stuff
-		font=runParagraph.font
-		font.name = 'Arial'
-		font.size = Pt(10)
+			runParagraph = paragraph.add_run(''.join(r+'\n'))
+			#set font stuff
+			font=runParagraph.font
+			font.name = 'Arial'
+			font.size = Pt(10)
+
 		document.add_page_break()
 		
 		#harvester output
+
 		document.add_heading('theHarvester Results for %s' % l, level=3)
 		paragraph = document.add_paragraph()
 		for h in harvesterResult: 
 			runParagraph = paragraph.add_run(''.join(h))
-		#set font stuff
-		font=runParagraph.font
-		font.name = 'Arial'
-		font.size = Pt(10)
+			#set font stuff
+			font=runParagraph.font
+			font.name = 'Arial'
+			font.size = Pt(10)
+
+		document.add_page_break()
+		
+		#shodan output
+		#reading from file because im stupid and cant get the json formatted
+		'''#print shodanResult
+		parsed=json.loads(str(shodanResult))
+		json.dumps(parsed, indent=4, sort_keys=True)
+
+		
+		paragraph = document.add_paragraph()
+		runParagraph = paragraph.add_run(json.dumps(parsed, indent=4, sort_keys=True, separators=(',', ': '))) #and JSON spews forth'''
 
 		document.add_heading('Shodan Results for %s' % l, level=3)
-		document.add_paragraph(shodan)
-		document.add_page_break()
+		paragraph = document.add_paragraph()
+		with open(reportDir+''.join(lookup)+'_shodan.txt','r') as f:
+			line = f.read().splitlines()
+			for li in line:
+				runParagraph = paragraph.add_run(li.rstrip('\n\r ')+'\n')
+				#set font stuff
+				font=runParagraph.font
+				font.name = 'Arial'
+				font.size = Pt(10)
 		
 		document.add_heading('Pastebin URLs for %s' % l, level=3)
 		document.add_paragraph(pasteUrl)
@@ -738,7 +809,7 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		document.add_page_break()
 
 
-		print '[+] Writing file OSINT_%s_.docx in ./reports/%s'  % (l, l)
+		print '[+] Writing file: ./reports/%s/OSINT_%s_.docx'  % (l, l)
 		document.save(reportDir+'OSINT_%s_.docx' % l)
 
 
