@@ -152,6 +152,7 @@ def main():
 	harvesterResult =[]
 	scrapeResult=[]
 	credResult=[]
+	pyfocaResult=[]
 
 	#call function if -w arg
 	if args.whois is True:
@@ -762,7 +763,7 @@ def pyfoca(args, lookup, reportDir):
 
 			#run pyfoca with -d domain. should automagically do metadata
 			try:
-				print '[+] Running pyfoca -d %s -r %s' % (l, reportDir)
+				print '[+] Running pyfoca -d %s' % l
 				pyfocaCmd = subprocess.Popen(['pyfoca', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
 			except:
 				print '[-] Error running pyfoca. Make sure it is in your PATH and you are connected to the Internet'
@@ -819,7 +820,8 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		#page break for cover page
 		document.add_page_break()
 
-		if credResult is not None:
+		if credResult:
+			print '[+] Adding credential dump results to report'
 			#header
 			heading = document.add_heading(level=3)
 			runHeading = heading.add_run('Credentials found from recent compromises (LinkedIn, Adobe, etc.) related to: %s' % l)
@@ -835,7 +837,8 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 			document.add_page_break()
 		
 		#add whois data with header and break after end
-		if whoisResult is not None:
+		if whoisResult:
+			print '[+] Adding whois results to report'
 			#header
 			heading = document.add_heading(level=3)
 			runHeading = heading.add_run('Whois Data for: %s' % l)
@@ -852,7 +855,8 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 			document.add_page_break()
 		
 		#add dns data with header and break after end
-		if dnsResult is not None:
+		if dnsResult:
+			print '[+] Adding DNS results to report'
 			#header
 			heading = document.add_heading(level=3)
 			runHeading = heading.add_run('Domain Name System Data for: %s' % l)
@@ -869,7 +873,8 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 			document.add_page_break()
 
 		#google dork output
-		if googleResult is not None:
+		if googleResult:
+			print '[+] Adding google dork results to report'
 			#header
 			heading = document.add_heading(level=3)
 			runHeading = heading.add_run('Google Dork Results for: %s' % l)
@@ -886,7 +891,8 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 			document.add_page_break()
 		
 		#harvester output
-		if harvesterResult is not None:
+		if harvesterResult:
+			print '[+] Adding theHarvester results to report'
 			document.add_heading('theHarvester Results for: %s' % l, level=3)
 			paragraph = document.add_paragraph()
 			for h in harvesterResult: 
@@ -899,7 +905,8 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		
 
 		#pastebin scrape output
-		if pasteScrapeResult is not None:
+		if pasteScrapeResult:
+			print '[+] Adding pastebin scrape results to report'
 			document.add_heading('Pastebin URLs for %s' % l, level=3)
 			document.add_paragraph(pasteScrapeResult)
 			document.add_page_break()
@@ -909,7 +916,8 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 
 
 		#general scrape output
-		if scrapeResult is not None:
+		if scrapeResult:
+			print '[+] Adding website scraping results to report'
 			document.add_heading('Website Scraping Results for %s' % l, level=3)
 			paragraph = document.add_paragraph()
 			for sr in scrapeResult:
@@ -922,8 +930,8 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 
 
 		#pyfoca results
-		if pyfocaResult is not None:
-			print 'focaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!!!!!!!!!!!!!!!!!!!!!'
+		if pyfocaResult:
+			print '[+] Adding pyfoca results to report'
 			document.add_heading('pyFoca Results for: %s' % l, level=3)
 			paragraph = document.add_paragraph()
 			for fr in pyfocaResult:
@@ -935,7 +943,7 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 			document.add_page_break()
 		
 		#shodan output
-		if shodanResult is not None:
+		if shodanResult:
 			#reading from file because im stupid and cant get the json formatted yet
 			'''#print shodanResult
 			parsed=json.loads(str(shodanResult))
