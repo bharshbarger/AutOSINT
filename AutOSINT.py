@@ -115,7 +115,8 @@ def main():
 		args.creds is False and \
 		args.scraper is None and \
 		args.theharvester is False and \
-		args.pastebinsearch is None):
+		args.pastebinsearch is None and \
+		args.foca is False):
 		print '[-] No options specified, use -h or --help for a list'
 		sys.exit()
 
@@ -184,9 +185,12 @@ def main():
 	if args.scraper is not None:
 		scrapeResult=scrape_sites(args, lookup, reportDir)
 
+	if args.foca is True:
+		pyfocaResult=pyfoca(args, lookup, reportDir)
+
 
 	#run the docx report. text files happen in the respective functions
-	write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, harvesterResult, scrapeResult, credResult)
+	write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, harvesterResult, scrapeResult, credResult, pyfocaResult)
 
 
 #*******************************************************************************
@@ -744,12 +748,39 @@ def credential_leaks(args, lookup, startTime, reportDir):
 
 #*******************************************************************************
 def pyfoca(args, lookup, reportDir):
-	if args.whois is True:
-		print "foca"
+	#https://github.com/altjx/ipwn
+	if args.foca is True:
+		
+		#init lists
+		pyfocaResult=[]
+
+		#based on domain or ip, enumerate with index and value
+		for i, l in enumerate(lookup):
+
+			#open file to write to
+			pyfocaFile=open(reportDir+''.join(l)+'_pyfoca.txt','w')
+
+			#run pyfoca with -d domain. should automagically do metadata
+			try:
+				print '[+] Running pyfoca -d %s -r %s' % (l, reportDir)
+				pyfocaCmd = subprocess.Popen(['pyfoca', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
+			except:
+				print '[-] Error running pyfoca. Make sure it is in your PATH and you are connected to the Internet'
+				pyfocaResult.append('Error running pyfoca')
+				pyfocaFile.writelines('Error running pyfoca')
+				pass
+			
+			#append output
+			pyfocaFile.writelines(pyfocaCmd)
+			pyfocaResult.append(pyfocaCmd)
+			
+			#spew if verbose
+			if args.verbose is True: 
+				for p in pyfocaResult:print '\n'.join(p)
 
 #*******************************************************************************
 
-def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, harvesterResult, scrapeResult, credResult):
+def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, harvesterResult, scrapeResult, credResult, pyfocaResult):
 
 	for l in lookup:
 		print '[+] Starting OSINT report for '+l
@@ -764,7 +795,7 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 
 		#add header
 		heading = document.add_heading()
-		runHeading = heading.add_run('Open Source Intelligence Report for %s' % l)
+		runHeading = heading.add_run('Open Source Intelligence Report for: %s' % l)
 		font=runHeading.font
 		font.name = 'Arial'
 		font.color.rgb = RGBColor(0xe9,0x58,0x23)
@@ -775,11 +806,11 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		font=runParagraph.font
 		font.name = 'Arial'
 		font.size = Pt(10)
-		runParagraph = paragraph.add_run('\nThese data include information about the network, technology, and people associated with the targets\n')
+		runParagraph = paragraph.add_run('\nThese data include information about the network, technology, and people associated with the targets.\n')
 		font=runParagraph.font
 		font.name = 'Arial'
 		font.size = Pt(10)
-		runParagraph = paragraph.add_run('\nSpecific data sources include: whois, domain name system (DNS) records, Google dork results, matches from recent compromises such as LinkedIn, Shodan, theHarvester, as well as queries to Pastebin, Github, job boards, etc. \n')
+		runParagraph = paragraph.add_run('\nSpecific data sources include: whois, domain name system (DNS) records, Google dork results, matches from recent compromises such as LinkedIn. Other sources include results from Shodan, document metadata from theHarvester and pyFoca, as well as queries to Pastebin, Github, job boards, etc. \n')
 		font=runParagraph.font
 		font.name = 'Arial'
 		font.size = Pt(10)
@@ -791,7 +822,7 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		if credResult is not None:
 			#header
 			heading = document.add_heading(level=3)
-			runHeading = heading.add_run('Credentials found from recent compromises (LinkedIn, Adobe, etc.) %s' % l)
+			runHeading = heading.add_run('Credentials found from recent compromises (LinkedIn, Adobe, etc.) related to: %s' % l)
 			font=runHeading.font
 			font.name = 'Arial'
 			font.color.rgb = RGBColor(0xe9,0x58,0x23)
@@ -807,7 +838,7 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		if whoisResult is not None:
 			#header
 			heading = document.add_heading(level=3)
-			runHeading = heading.add_run('Whois Data for %s' % l)
+			runHeading = heading.add_run('Whois Data for: %s' % l)
 			font=runHeading.font
 			font.name = 'Arial'
 			font.color.rgb = RGBColor(0xe9,0x58,0x23)
@@ -824,7 +855,7 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		if dnsResult is not None:
 			#header
 			heading = document.add_heading(level=3)
-			runHeading = heading.add_run('Domain Name System Data for %s' % l)
+			runHeading = heading.add_run('Domain Name System Data for: %s' % l)
 			font=runHeading.font
 			font.name = 'Arial'
 			font.color.rgb = RGBColor(0xe9,0x58,0x23)
@@ -841,7 +872,7 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		if googleResult is not None:
 			#header
 			heading = document.add_heading(level=3)
-			runHeading = heading.add_run('Google Dork Results for %s' % l)
+			runHeading = heading.add_run('Google Dork Results for: %s' % l)
 			font=runHeading.font
 			font.name = 'Arial'
 			font.color.rgb = RGBColor(0xe9,0x58,0x23)
@@ -856,7 +887,7 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		
 		#harvester output
 		if harvesterResult is not None:
-			document.add_heading('theHarvester Results for %s' % l, level=3)
+			document.add_heading('theHarvester Results for: %s' % l, level=3)
 			paragraph = document.add_paragraph()
 			for h in harvesterResult: 
 				runParagraph = paragraph.add_run(''.join(h))
@@ -866,31 +897,7 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 				font.size = Pt(10)
 			document.add_page_break()
 		
-		#shodan output
-		if shodanResult is not None:
-			#reading from file because im stupid and cant get the json formatted yet
-			'''#print shodanResult
-			parsed=json.loads(str(shodanResult))
-			json.dumps(parsed, indent=4, sort_keys=True)
 
-			
-			paragraph = document.add_paragraph()
-			runParagraph = paragraph.add_run(json.dumps(parsed, indent=4, sort_keys=True, separators=(',', ': '))) #and JSON spews forth'''
-
-			document.add_heading('Shodan Results for %s' % l, level=3)
-			paragraph = document.add_paragraph()
-			try:
-				with open(reportDir+''.join(lookup)+'_shodan.txt','r') as f:
-					line = f.read().splitlines()
-					for li in line:
-						runParagraph = paragraph.add_run(li.rstrip('\n\r ')+'\n')
-						#set font stuff
-						font=runParagraph.font
-						font.name = 'Arial'
-						font.size = Pt(10)
-			except:
-				pass
-		
 		#pastebin scrape output
 		if pasteScrapeResult is not None:
 			document.add_heading('Pastebin URLs for %s' % l, level=3)
@@ -907,12 +914,52 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 			paragraph = document.add_paragraph()
 			for sr in scrapeResult:
 				runParagraph = paragraph.add_run(sr)
-				#set font stuff
 				font=runParagraph.font
 				font.name = 'Arial'
 				font.size = Pt(10)
 
 			document.add_page_break()
+
+
+		#pyfoca results
+		if pyfocaResult is not None:
+			print 'focaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!!!!!!!!!!!!!!!!!!!!!'
+			document.add_heading('pyFoca Results for: %s' % l, level=3)
+			paragraph = document.add_paragraph()
+			for fr in pyfocaResult:
+				runParagraph = paragraph.add_run('\n'.join(fr))
+				font=runParagraph.font
+				font.name = 'Arial'
+				font.size = Pt(10)
+
+			document.add_page_break()
+		
+		#shodan output
+		if shodanResult is not None:
+			#reading from file because im stupid and cant get the json formatted yet
+			'''#print shodanResult
+			parsed=json.loads(str(shodanResult))
+			json.dumps(parsed, indent=4, sort_keys=True)
+
+			
+			paragraph = document.add_paragraph()
+			runParagraph = paragraph.add_run(json.dumps(parsed, indent=4, sort_keys=True, separators=(',', ': '))) #and JSON spews forth'''
+
+			document.add_heading('Shodan Results for: %s' % l, level=3)
+			paragraph = document.add_paragraph()
+			try:
+				with open(reportDir+''.join(lookup)+'_shodan.txt','r') as f:
+					line = f.read().splitlines()
+					for li in line:
+						runParagraph = paragraph.add_run(li.rstrip('\n\r ')+'\n')
+						#set font stuff
+						font=runParagraph.font
+						font.name = 'Arial'
+						font.size = Pt(10)
+			except:
+				pass
+		
+
 		
 		print '[+] Writing file: ./reports/%s/OSINT_%s_.docx'  % (l, l)
 		document.save(reportDir+'OSINT_%s_.docx' % l)
