@@ -39,8 +39,9 @@ import re
 import os
 from google import search
 import json
-import lxml
-from lxml.html.clean import Cleaner
+from lxml import html
+import requests
+from collections import Counter
 
 
 #python-docx: https://pypi.python.org/pypi/python-docx
@@ -64,7 +65,7 @@ def main():
 	parser.add_argument('-n', '--nslookup',help = 'Name query DNS for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
 	parser.add_argument('-p', '--pastebinsearch', nargs = '+', help = 'Search google for <arg> site:pastebin.com. Requires a pro account if you dont want to get blacklisted.')
 	parser.add_argument('-s', '--shodan', nargs = 1, help = 'query Shodan, optionally provide -s <apikey>')
-	parser.add_argument('-S', '--scraper', nargs = '+', help = 'Scrape pastebin, github, indeed, more to be added. Args are scrape keywords if applicable')
+	parser.add_argument('-S', '--scraper', nargs = '+', help = 'Scrape pastebin, github, indeed, more to be added. Args are scrape keywords if applicable. Doesnt really work well right now')
 	parser.add_argument('-t', '--theharvester', help = 'Invoke theHarvester', action = 'store_true')
 	parser.add_argument('-v', '--verbose', help = 'Verbose', action = 'store_true')	
 	parser.add_argument('-w', '--whois', help = 'query Whois for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
@@ -205,37 +206,78 @@ def hibp_search(args, lookup, reportDir):
 #passive dns
 
 #*******************************************************************************
-
+#generic site scraper (well, mainly an interface to available search APIs) 
+#that uses fixed set of sites defined in scrapeUrls dictionary to look for 
+#various things like job postings and user supplied keywords where applicable
 def scrape_sites(args, lookup, reportDir):
 	scrapeResult=[]
+	userAgent = {'User-agent': 'Mozilla/5.0'}
+
+
 	for i,l in enumerate(lookup):
+		scrapeFile=open(reportDir+''.join(l)+'_scrape.txt','w')
 
 		print '[+] Scraping sites using '+ l
-
-		scrapeFile=open(reportDir+''.join(l)+'_scrape.html', 'w')
 
 		for a in args.scraper:
 
 			#init list and insert domain with tld stripped
 			#insert lookup value into static urls
-			scrapeUrls =['http://www.indeed.com/cmp/%s/jobs?q=%s' % (l.split('.')[0], a),\
-			'https://github.com/search?q=%s&type=Code&ref=searchresults' % (l.split('.')[0]),\
-			'https://www.glassdoor.com/Reviews/company-reviews.htm?suggestCount=0&suggestChosen=false&clickSource=searchBtn&typedKeyword=%s&sc.keyword=%s&locT=&locId=' % (l.split('.')[0],l.split('.')[0]), \
-			'http://www.slideshare.net/%s' % (l.split('.')[0])]
+			scrapeUrls = {\
+			'indeed':'http://www.indeed.com/cmp/%s/jobs?q=%s' % (l.split('.')[0], a),\
+			'github':'https://api.github.com/search/repositories?q=%s&sort=stars&order=desc' % (l.split('.')[0]),#pull off the tld\
+			#'glassdoor':'https://www.glassdoor.com/Reviews/company-reviews.htm?suggestCount=0&suggestChosen=false&clickSource=searchBtn&typedKeyword=%s&sc.keyword=%s&locT=&locId=' % (l.split('.')[0],l.split('.')[0]),\
+			#'slideshare':'http://www.slideshare.net/%s' % (l.split('.')[0]),\
+			#'':'',\
+			#'':''\
+			}
 
-
-			for url in scrapeUrls:
-				if args.verbose is True:print '[+] Grabbing '+url
+			for name,url in scrapeUrls.items():
+				if args.verbose is True:print '[+] Scraping '+ name
+				#http://docs.python-guide.org/en/latest/scenarios/scrape/
 				try:
-					req = urllib2.Request(url)
-					print 'Opening ' + url
-					scrapeContent = urllib2.urlopen(req).read()
-					time.sleep(1)
-					scrapeResult.append(scrapeContent)
-					scrapeFile.writelines(scrapeContent)
-				except Exception:
+					page = requests.get(url, headers = userAgent)
+				except:
+					print '[-] Scraping error on ' + url +':'
 					pass
-			return scrapeResult
+
+				#build html tree
+				tree = html.fromstring(page.content)
+				scrapeResult.append('Results from jobs posted to indeed.com that match the string: ' + l+'\n')
+				#indeed matches jobs. yeah yeah it doesnt use their api yet
+				if name is 'indeed':
+					jobCount = tree.xpath('//span[@class="cmp-jobs-count-number"]/text()')
+					print '[+] '+str(''.join(jobCount)) + ' jobs posted on indeed'
+					jobTitle = tree.xpath('//a[@class="cmp-job-url"]/text()')
+					for t in jobTitle:
+						scrapeResult.append(t+'\n')
+
+
+				#github matches search for user supplied domain
+				#https://developer.github.com/v3/search/
+				#http://docs.python-guide.org/en/latest/scenarios/json/
+				if name is 'github':
+					gitJson = json.loads(page.text)
+					#grab repo name
+					for c,i in enumerate(gitJson['items']):
+						scrapeResult.append(i['full_name']+'\n')
+					print '[+] Found '+str(c+1)+' repositories matching '+ (l.split('.')[0])
+
+
+					
+			#write the file
+			for s in scrapeResult:
+				scrapeFile.writelines(''.join(str(s.encode('utf8'))))
+				
+			#verbosity logic
+			if args.verbose is True:
+				for r in scrapeResult: print ''.join(r.strip('\n'))
+			
+
+	return scrapeResult
+
+
+
 
 
 
@@ -526,11 +568,11 @@ def the_harvester(args, lookup, reportDir):
 			harvesterFile=open(reportDir+''.join(l)+'_theharvester.txt','w')
 
 			#run harvester with -b google on lookup
-			print '[+] Running theHarvester -b google -d %s against google' % l
+			print '[+] Running theHarvester -b google -d %s ' % l
 			harvesterGoogleCmd = subprocess.Popen(['theharvester', '-b', 'google', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
 
 			#run harvester with -b linkedin on lookup
-			print '[+] Running theHarvester -b linkedin -d %s against linkedin' % l
+			print '[+] Running theHarvester -b linkedin -d %s ' % l
 			harvesterLinkedinCmd = subprocess.Popen(['theharvester', '-b', 'linkedin', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
 
 			#append lists together
@@ -676,32 +718,6 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		harvestG=None
 		harvestL=None
 
-
-		if whoisResult is not None:
-			for w in whoisResult: whois = ('\n'.join(w))
-		else:
-			whois = "No Whois results"
-
-		if dnsResult is not None:
-			for d in dnsResult: dns = ('\n'.join(d))
-		else:
-			dns = 'No DNS results'
-
-
-		if pasteScrapeResult is not None:
-			for psr in pasteScrapeResult: pasteUrl = (''.join(psr))
-		else:
-			pasteUrl = 'No pastebin urls found'
-
-		if pasteScrapeContent is not None:
-			for psc in pasteScrapeContent: pasteContent = (''.join(psc))
-		else:
-			pasteContent = 'No pastebin content found'
-
-		
-
-
-
 		#dump to a word doc
 		#refs
 		#https://python-docx.readthedocs.io/en/latest/user/text.html
@@ -787,7 +803,7 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		document.add_page_break()
 		
 		#shodan output
-		#reading from file because im stupid and cant get the json formatted
+		#reading from file because im stupid and cant get the json formatted yet
 		'''#print shodanResult
 		parsed=json.loads(str(shodanResult))
 		json.dumps(parsed, indent=4, sort_keys=True)
@@ -816,7 +832,7 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 
 
 
-		#general scrape output. not going into docx just yet.
+		#general scrape output
 		document.add_heading('Website Scraping Results for %s' % l, level=3)
 		paragraph = document.add_paragraph()
 		for sr in scrapeResult:
