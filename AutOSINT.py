@@ -258,7 +258,7 @@ def scrape_sites(args, lookup, reportDir):
 					page = requests.get(url, headers = userAgent)
 				except:
 					print '[-] Scraping error on ' + url +':'
-					pass
+					continue
 
 				#build html tree
 				tree = html.fromstring(page.content)
@@ -315,7 +315,7 @@ def whois_search(args, lookup, reportDir):
 		except:
 			print '[-] Error running whois command'
 			whoisResult.append('Error running whois command')
-			pass
+			continue
 		#append lists together
 		whoisResult.append(whoisCmd)
 
@@ -346,7 +346,7 @@ def dns_search(args, lookup, reportDir):
 		except:
 			print '[-] Error running dns query'
 			dnsResult.append('Error running DNS query')
-			pass
+			continue
 		#append lists together
 		dnsResult.append(dnsCmd)
 
@@ -602,7 +602,7 @@ def the_harvester(args, lookup, reportDir):
 			except:
 				print '[-] Error running theharvester. Make sure it is in your PATH and you are connected to the Internet'
 				harvesterResult.append('Error running theHarvester')
-				pass
+				continue
 
 			#run harvester with -b linkedin on lookup
 			try:
@@ -611,7 +611,7 @@ def the_harvester(args, lookup, reportDir):
 			except:
 				print '[-] Error running theharvester. Make sure it is in your PATH and you are connected to the Internet'
 				harvesterResult.append('Error running theHarvester')
-				pass
+				continue
 
 			#append lists together
 			harvesterResult.append(harvesterGoogleCmd)
@@ -768,7 +768,7 @@ def pyfoca(args, lookup, reportDir):
 				print '[-] Error running pyfoca. Make sure it is in your PATH and you are connected to the Internet'
 				pyfocaResult.append('Error running pyfoca')
 				pyfocaFile.writelines('Error running pyfoca')
-				pass
+				continue
 			
 			#append output
 			pyfocaFile.writelines(pyfocaCmd)
@@ -957,7 +957,7 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 						font.name = 'Arial'
 						font.size = Pt(10)
 			except:
-				pass
+				continue
 		
 
 		
