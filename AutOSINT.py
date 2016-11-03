@@ -35,6 +35,7 @@ import urllib2
 import shodan
 import docx
 from docx.shared import Pt
+from docx.shared import RGBColor
 import re
 import os
 from google import search
@@ -55,13 +56,14 @@ def main():
 
 	#parse input, nargs allows one or more to be entered
 	#https://docs.python.org/3/library/argparse.html
+	#set nargs back to + for multi search of domain or ip (still really buggy)
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-a', '--all', help = 'run All queries', action = 'store_true')
 	parser.add_argument('-c', '--creds', help = 'Search local copies of credential dumps', action = 'store_true')
-	parser.add_argument('-d', '--domain', nargs = '+', help = 'the Domain(s) you want to search.')
+	parser.add_argument('-d', '--domain', nargs = 1, help = 'the Domain you want to search.')
 	parser.add_argument('-f', '--foca', help = 'invoke pyfoca', action = 'store_true')
 	parser.add_argument('-g', '--googledork', nargs = '*',help = 'query Google for supplied args that are treated as a dork. i.e. -g password becomes a search for "password site:<domain>"')
-	parser.add_argument('-i', '--ipaddress', nargs = '+', help = 'the IP address(es) you want to search. Must be a valid IP. ')
+	parser.add_argument('-i', '--ipaddress', nargs = 1, help = 'the IP address you want to search. Must be a valid IP. ')
 	parser.add_argument('-n', '--nslookup',help = 'Name query DNS for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
 	parser.add_argument('-p', '--pastebinsearch', nargs = '+', help = 'Search google for <arg> site:pastebin.com. Requires a pro account if you dont want to get blacklisted.')
 	parser.add_argument('-s', '--shodan', nargs = 1, help = 'query Shodan, optionally provide -s <apikey>')
@@ -105,7 +107,7 @@ def main():
 	    parser.error('[-] No OSINT reference provided, add domain(s) with -d or IP address(es) with -i\n')
 	    sys.exit()
 
-	#if no queries defined, exit
+	#if no queries defined, exit. -a sets all so we're good there
 	if (args.whois is False and \
 		args.nslookup is False and \
 		args.googledork is None and \
@@ -148,6 +150,7 @@ def main():
 	pasteScrapeContent = []
 	harvesterResult =[]
 	scrapeResult=[]
+	credResult=[]
 
 	#call function if -w arg
 	if args.whois is True:
@@ -167,7 +170,7 @@ def main():
 	
 	#call function if -p arg
 	if args.pastebinsearch is not None:
-		pastebin_search(args, lookup, reportDir)
+		pasteScrapeResult=pastebin_search(args, lookup, reportDir)
 	
 	# call function if -t arg
 	if args.theharvester is True:
@@ -175,7 +178,7 @@ def main():
 	
 	#call function if -c arg 
 	if args.creds is True:
-		credential_leaks(args, lookup, startTime, reportDir)
+		credResult=credential_leaks(args, lookup, startTime, reportDir)
 	
 	#call function if -S arg
 	if args.scraper is not None:
@@ -183,7 +186,7 @@ def main():
 
 
 	#run the docx report. text files happen in the respective functions
-	write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, pasteScrapeContent, harvesterResult, scrapeResult)
+	write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, harvesterResult, scrapeResult, credResult)
 
 
 #*******************************************************************************
@@ -204,6 +207,18 @@ def hibp_search(args, lookup, reportDir):
 #cool mapping of AS, etc
 #*******************************************************************************
 #passive dns
+
+#*******************************************************************************
+#viewdns.info
+#http://viewdns.info/api/
+#*******************************************************************************
+#he bgp info
+#http://bgp.he.net/dns/rapid7.com#_ipinfo
+#*******************************************************************************
+#active osint:
+#zone transfer host -a does this?
+#ike endpoints
+#http screnshots
 
 #*******************************************************************************
 #generic site scraper (well, mainly an interface to available search APIs) 
@@ -243,7 +258,7 @@ def scrape_sites(args, lookup, reportDir):
 
 				#build html tree
 				tree = html.fromstring(page.content)
-				scrapeResult.append('Results from jobs posted to indeed.com that match the string: ' + l+'\n')
+				
 				#indeed matches jobs. yeah yeah it doesnt use their api yet
 				if name is 'indeed':
 					jobCount = tree.xpath('//span[@class="cmp-jobs-count-number"]/text()')
@@ -276,11 +291,6 @@ def scrape_sites(args, lookup, reportDir):
 
 	return scrapeResult
 
-
-
-
-
-
 #*******************************************************************************
 #queries whois of ip or domain set in lookup, dumps to stdout if -v is set, writes to txt file either way.
 #returns whoisResult for use in report
@@ -296,8 +306,12 @@ def whois_search(args, lookup, reportDir):
 
 		#subprocess open the whois command for current value of "l" in lookup list. 
 		#split into newlines instead of commas
-		whoisCmd = subprocess.Popen(['whois',l], stdout = subprocess.PIPE).communicate()[0].split('\n')
-
+		try:
+			whoisCmd = subprocess.Popen(['whois',l], stdout = subprocess.PIPE).communicate()[0].split('\n')
+		except:
+			print '[-] Error running whois command'
+			whoisResult.append('Error running whois command')
+			pass
 		#append lists together
 		whoisResult.append(whoisCmd)
 
@@ -320,11 +334,15 @@ def dns_search(args, lookup, reportDir):
 
 	#iterate the index and values of the lookup list
 	for i, l in enumerate(lookup):
-		print '[+] Performing DNS query '+ str(i + 1) + ' using "host -a  ' + l+'"'
-		dnsFile=open(reportDir+''.join(l)+'_dns.txt','a')
+		print '[+] Performing DNS query '+ str(i + 1) + ' using "host -a ' + l+'"'
+		dnsFile=open(reportDir+''.join(l)+'_dns.txt','w')
 		#subprocess to run host -a on the current value of l in the loop, split into newlines
-		dnsCmd = subprocess.Popen(['host', '-a', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\n')
-
+		try:
+			dnsCmd = subprocess.Popen(['host', '-a', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\n')
+		except:
+			print '[-] Error running dns query'
+			dnsResult.append('Error running DNS query')
+			pass
 		#append lists together
 		dnsResult.append(dnsCmd)
 
@@ -368,6 +386,7 @@ def google_search(args, lookup, reportDir):
 
 			#iterate the lookup list
 			for i, l in enumerate(lookup):
+				googleResult.append('Google query for: '+str(d)+ ' ' + 'site:'+str(l))
 				googleFile=open(reportDir+''.join(l)+'_google_dork_'+str(d)+'.txt','w')
 
 				#show user whiat is being searched
@@ -469,6 +488,7 @@ def shodan_search(args, lookup, reportDir):
 			shodanFile.writelines(result['data'])
 			shodanFile.writelines('****************\n')
 
+		print shodanResult
 		return shodanResult
 
 
@@ -485,6 +505,7 @@ def pastebin_search(args, lookup, reportDir):
 
 		pasteScrapeResult = []
 		pasteScrapeContent = []
+
 
 		if args.pastebinsearch is None:
 			print '[-] No pastebin search string provided. Skipping! Provide with -p <search items>'
@@ -509,23 +530,26 @@ def pastebin_search(args, lookup, reportDir):
 						#time.sleep(1)
 
 						#append results together
-						scrapeResult.append(url)
+						pasteScrapeResult.append(url)
 						
 						time.sleep(1)
 						print url()
 				except Exception:
+					print '[-] Error scraping pastebin, skipping...'
+					pasteScrapeResult.append('Error scraping pastebin')
 					pass
 
 				for r in scrapeResult:
 					try:
 						req = urllib2.Request(r)
 						print 'Opening ' + r
-						scrapeContent = urllib2.urlopen(req).read()
+						pasteScrapeContent = urllib2.urlopen(req).read()
 						time.sleep(1)
-						#scrapeContent.append()
-						print scrapeContent
-						
+						pasteScrapeContent.append()
+
 					except Exception:
+						print '[-] Error scraping pastebin, skipping...'
+						pasteScrapeContent.append('Error scraping pastebin')
 						pass
 				
 				
@@ -543,7 +567,7 @@ def pastebin_search(args, lookup, reportDir):
 
 		#return results list
 		return pasteScrapeResult
-		return pasteScrapeContent
+
 
 	
 
@@ -568,12 +592,22 @@ def the_harvester(args, lookup, reportDir):
 			harvesterFile=open(reportDir+''.join(l)+'_theharvester.txt','w')
 
 			#run harvester with -b google on lookup
-			print '[+] Running theHarvester -b google -d %s ' % l
-			harvesterGoogleCmd = subprocess.Popen(['theharvester', '-b', 'google', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
+			try:
+				print '[+] Running theHarvester -b google -d %s ' % l
+				harvesterGoogleCmd = subprocess.Popen(['theharvester', '-b', 'google', '-d', str(l), '-l', '500', '-h'], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
+			except:
+				print '[-] Error running theharvester. Make sure it is in your PATH and you are connected to the Internet'
+				harvesterResult.append('Error running theHarvester')
+				pass
 
 			#run harvester with -b linkedin on lookup
-			print '[+] Running theHarvester -b linkedin -d %s ' % l
-			harvesterLinkedinCmd = subprocess.Popen(['theharvester', '-b', 'linkedin', '-d', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
+			try:
+				print '[+] Running theHarvester -b linkedin -d %s ' % l
+				harvesterLinkedinCmd = subprocess.Popen(['theharvester', '-b', 'linkedin', '-d', str(l), '-l', '500', '-h'], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
+			except:
+				print '[-] Error running theharvester. Make sure it is in your PATH and you are connected to the Internet'
+				harvesterResult.append('Error running theHarvester')
+				pass
 
 			#append lists together
 			harvesterResult.append(harvesterGoogleCmd)
@@ -625,98 +659,100 @@ def credential_leaks(args, lookup, startTime, reportDir):
 
 			#init dictionary
 			dumpDict={}
-			credReportUsers=[]
-			credReportPass=[]
+			credResult=[]
 
+
+			print '[+] Searching credential dumps for entries that contain '+l
 			#overall, take the lookup value (preferably a domain) and search the dumps for it
 			#for each file in ./credleaks directory
+			#really need to get this data out of text files an into an indexed form. it's slow af 
 			for credFileName in os.listdir('./credleaks/'):
 				#open the file
 				credFileOpen = open('./credleaks/'+credFileName, "r")
 				j=0
-				i=0
+				#i=0
 				#for each line in opened file
 				for line in credFileOpen:
-					i=i+1
+					#line counter index. i thought maybe i could also display how many lines were searched
+					#i=i+1
 					#regex search for our current lookup value l
 					if re.search((str(l)), line):
+						#counter index
 						j=j+1
-						#look for a colon delimiter
+						#look for a colon delimiter. dump files should be like email:hash. this of course assumes the creds file has emails as usernames
 						if ':' in line:
-							#split matches based on colons, like awk -F :. emails shouldnt have colons, right?
+							#split matches based on colons, sorta like 'awk -F :'. emails shouldnt have colons, right?
 							#also the dat HAS to require colons otherwise it will return an index error
 							matchedLine=line.split(":")
 							#take the split parts, 0 and 1 that are uname and hash, respectively
 							#place into a dict and strip the \r\n off of them
 							dumpDict[str(matchedLine[1].rstrip("\r\n"))]=str(matchedLine[0].rstrip("\r\n"))
+						#otherwise print xxx if theres no hash for the entry. some dumps dont have hashes for everyone...
 						else:
 							dumpDict['xxx']=str(line.rstrip("\r\n"))
+				#print each file searched and how many matches if verbose
 				if args.verbose is True: 
 					print '[i] Searched ' + str(credFileName)+' and found '+ str(j)
 
 			
-			#if args.verbose is True:	
-			#print dumpDict contents
+			#print hash and user of files if verbose	
 			if args.verbose is True:
 				for h, u in dumpDict.items():
-					print(str(h), str(u)) 
-			print '[+] Searching Local Credential Dumps in ./credleaks against potfile in ./potfile '+l
+					print(str(u)) 
+
+			#start printing stuff and appending to credResult
+			print '[+] Searching Local Credential Dumps in ./credleaks against potfile in ./potfile '
 			credFile.writelines('********EMAILS FOUND BELOW********\n\n\n\n')
+			credResult.append('********EMAILS FOUND BELOW********\n\n\n\n')
+			
+			#iterate the dictionary containing user and hashes
 			for h, u in dumpDict.items():
+				#write username to text file
 				credFile.writelines(str(u)+'\n')
-				credReportUsers.append(str(u)+'\n')
+				#write username to credResult for the docx report
+				credResult.append(str(u)+'\n')
 				
 			credFile.writelines('********CREDENTIALS FOUND BELOW*********\n\n\n\n')
+			credResult.append('********CREDENTIALS FOUND BELOW*********\n\n\n\n')
 			
-			#still in our lookup value iterate potfiles directory
+			#this section 'cracks' the hashes provided a pre-populated pot file
+			#still in our lookup value iterate potfiles directory. you can have multiple pots, just in case
 			for potFileName in os.listdir('./potfile/'):
 				#open a pot file
 				with open('./potfile/'+potFileName, 'r') as potFile:
-					#then look at every line
+					#tell user you are looking
 					print '[i] Any creds you have in your potfile will appear below as user:hash:plain : '
+					#then look at every line
 					for potLine in potFile:
 						#then for every line look at every hash and user in the dict
 						for h, u in dumpDict.items():
 							#if the hash in the dict matches a line in the potfile
-							#that is the same length as the original hash
+							#that is also the same length as the original hash (this is probably a crappy check tho...)
 							if str(h) == str(potLine[0:len(h)]):
-								#print the hash
+								#print the user: and the line from the potfile (hash:plain) to the user
 								print str(u)+':'+str(potLine.rstrip("\r\n"))
 								#need to append the output to a variable to return or write to the file
+								#this is separate because not all found usernames/emails have hashes and not all hashes are cracked
+								#write to text file
 								credFile.writelines(str(u)+':'+str(potLine[len(h):]))
-								credReportPass.append(str(u)+':'+str(potLine[len(h):]))
+								#add to credResult for docx report
+								credResult.append(str(u)+':'+str(potLine[len(h):]))
 
-			return credReportUsers
-			return credReportPass
+
+			return credResult	
+			print credResult
 
 #*******************************************************************************
 def pyfoca(args, lookup, reportDir):
 	if args.whois is True:
 		print "foca"
-#*******************************************************************************
-#viewdns.info
-#http://viewdns.info/api/
-#*******************************************************************************
-#he bgp info
-#http://bgp.he.net/dns/rapid7.com#_ipinfo
-#*******************************************************************************
-#active osint:
-#zone transfer
-#ike endpoints
-#http screnshots
-#*******************************************************************************
+
 #*******************************************************************************
 
-def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, pasteScrapeContent, harvesterResult, scrapeResult):
+def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, harvesterResult, scrapeResult, credResult):
 
 	for l in lookup:
-
-		whois=None
-		dns=None
-		pasteUrl=None
-		pasteContent=None
-		harvestG=None
-		harvestL=None
+		print '[+] Starting OSINT report for '+l
 
 		#dump to a word doc
 		#refs
@@ -726,129 +762,158 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		#create a document 
 		document = docx.Document()
 
-		#need font stuff here?
-
-		#add boilerplate header
+		#add header
 		heading = document.add_heading()
 		runHeading = heading.add_run('Open Source Intelligence Report for %s' % l)
 		font=runHeading.font
 		font.name = 'Arial'
+		font.color.rgb = RGBColor(0xe9,0x58,0x23)
 		
-		#add boilerplate intro
+		#add intro text
 		paragraph = document.add_paragraph() 
-		runParagraph = paragraph.add_run('This document contains data obtained by programatically quering various free or low cost Internet data sources')
-		
-		#set font stuff
+		runParagraph = paragraph.add_run('\nThis document contains information about network, technology, and people associated with the assessment targets. The information was obtained by programatically querying various free or low cost Internet data sources.\n')
+		font=runParagraph.font
+		font.name = 'Arial'
+		font.size = Pt(10)
+		runParagraph = paragraph.add_run('\nThese data include information about the network, technology, and people associated with the targets\n')
+		font=runParagraph.font
+		font.name = 'Arial'
+		font.size = Pt(10)
+		runParagraph = paragraph.add_run('\nSpecific data sources include: whois, domain name system (DNS) records, Google dork results, matches from recent compromises such as LinkedIn, Shodan, theHarvester, as well as queries to Pastebin, Github, job boards, etc. \n')
 		font=runParagraph.font
 		font.name = 'Arial'
 		font.size = Pt(10)
 
-		runParagraph = paragraph.add_run('These data include information about the network, technology, and people associated with the targets')
 		
-		
-
-		#set font stuff
-		font=runParagraph.font
-		font.name = 'Arial'
-		font.size = Pt(10)
-		#break
+		#page break for cover page
 		document.add_page_break()
-		
 
+		if credResult is not None:
+			#header
+			heading = document.add_heading(level=3)
+			runHeading = heading.add_run('Credentials found from recent compromises (LinkedIn, Adobe, etc.) %s' % l)
+			font=runHeading.font
+			font.name = 'Arial'
+			font.color.rgb = RGBColor(0xe9,0x58,0x23)
+			paragraph = document.add_paragraph()
+			for c in credResult:
+				runParagraph = paragraph.add_run(''.join(c))
+				font=runParagraph.font
+				font.name = 'Arial'
+				font.size = Pt(10)
+			document.add_page_break()
+		
 		#add whois data with header and break after end
-		document.add_heading('Whois Data for %s' % l , level=3)
-		paragraph = document.add_paragraph()
-		runParagraph = paragraph.add_run(whois)
-		#set font stuff
-		font=runParagraph.font
-		font.name = 'Arial'
-		font.size = Pt(10)
-
-		document.add_page_break()
+		if whoisResult is not None:
+			#header
+			heading = document.add_heading(level=3)
+			runHeading = heading.add_run('Whois Data for %s' % l)
+			font=runHeading.font
+			font.name = 'Arial'
+			font.color.rgb = RGBColor(0xe9,0x58,0x23)
+			#content
+			paragraph = document.add_paragraph()
+			for w in whoisResult:
+				runParagraph = paragraph.add_run('\n'.join(w))
+				font=runParagraph.font
+				font.name = 'Arial'
+				font.size = Pt(10)
+			document.add_page_break()
 		
 		#add dns data with header and break after end
-		document.add_heading('Domain Name System Data for %s' % l, level=3)
-		paragraph = document.add_paragraph()
-		runParagraph = paragraph.add_run(dns)
-		#set font stuff
-		font=runParagraph.font
-		font.name = 'Arial'
-		font.size = Pt(10)
-
-		document.add_page_break()
-
-		#dork output
-		document.add_heading('Google Dork Results for %s' % l, level=3)
-		paragraph = document.add_paragraph()
-		for r in googleResult:
-			runParagraph = paragraph.add_run(''.join(r+'\n'))
-			#set font stuff
-			font=runParagraph.font
+		if dnsResult is not None:
+			#header
+			heading = document.add_heading(level=3)
+			runHeading = heading.add_run('Domain Name System Data for %s' % l)
+			font=runHeading.font
 			font.name = 'Arial'
-			font.size = Pt(10)
+			font.color.rgb = RGBColor(0xe9,0x58,0x23)
+			#content
+			paragraph = document.add_paragraph()
+			for d in dnsResult:
+				runParagraph = paragraph.add_run('\n'.join(d))
+				font=runParagraph.font
+				font.name = 'Arial'
+				font.size = Pt(10)
+			document.add_page_break()
 
-		document.add_page_break()
+		#google dork output
+		if googleResult is not None:
+			#header
+			heading = document.add_heading(level=3)
+			runHeading = heading.add_run('Google Dork Results for %s' % l)
+			font=runHeading.font
+			font.name = 'Arial'
+			font.color.rgb = RGBColor(0xe9,0x58,0x23)
+			#content
+			paragraph = document.add_paragraph()
+			for r in googleResult:
+				runParagraph = paragraph.add_run(''.join(r+'\n'))
+				font=runParagraph.font
+				font.name = 'Arial'
+				font.size = Pt(10)
+			document.add_page_break()
 		
 		#harvester output
-
-		document.add_heading('theHarvester Results for %s' % l, level=3)
-		paragraph = document.add_paragraph()
-		for h in harvesterResult: 
-			runParagraph = paragraph.add_run(''.join(h))
-			#set font stuff
-			font=runParagraph.font
-			font.name = 'Arial'
-			font.size = Pt(10)
-
-		document.add_page_break()
+		if harvesterResult is not None:
+			document.add_heading('theHarvester Results for %s' % l, level=3)
+			paragraph = document.add_paragraph()
+			for h in harvesterResult: 
+				runParagraph = paragraph.add_run(''.join(h))
+				#set font stuff
+				font=runParagraph.font
+				font.name = 'Arial'
+				font.size = Pt(10)
+			document.add_page_break()
 		
 		#shodan output
-		#reading from file because im stupid and cant get the json formatted yet
-		'''#print shodanResult
-		parsed=json.loads(str(shodanResult))
-		json.dumps(parsed, indent=4, sort_keys=True)
+		if shodanResult is not None:
+			#reading from file because im stupid and cant get the json formatted yet
+			'''#print shodanResult
+			parsed=json.loads(str(shodanResult))
+			json.dumps(parsed, indent=4, sort_keys=True)
 
-		
-		paragraph = document.add_paragraph()
-		runParagraph = paragraph.add_run(json.dumps(parsed, indent=4, sort_keys=True, separators=(',', ': '))) #and JSON spews forth'''
+			
+			paragraph = document.add_paragraph()
+			runParagraph = paragraph.add_run(json.dumps(parsed, indent=4, sort_keys=True, separators=(',', ': '))) #and JSON spews forth'''
 
-		document.add_heading('Shodan Results for %s' % l, level=3)
-		paragraph = document.add_paragraph()
-		try:
-			with open(reportDir+''.join(lookup)+'_shodan.txt','r') as f:
-				line = f.read().splitlines()
-				for li in line:
-					runParagraph = paragraph.add_run(li.rstrip('\n\r ')+'\n')
-					#set font stuff
-					font=runParagraph.font
-					font.name = 'Arial'
-					font.size = Pt(10)
-		except:
-			break
+			document.add_heading('Shodan Results for %s' % l, level=3)
+			paragraph = document.add_paragraph()
+			try:
+				with open(reportDir+''.join(lookup)+'_shodan.txt','r') as f:
+					line = f.read().splitlines()
+					for li in line:
+						runParagraph = paragraph.add_run(li.rstrip('\n\r ')+'\n')
+						#set font stuff
+						font=runParagraph.font
+						font.name = 'Arial'
+						font.size = Pt(10)
+			except:
+				pass
 		
-		document.add_heading('Pastebin URLs for %s' % l, level=3)
-		document.add_paragraph(pasteUrl)
-		document.add_page_break()
+		#pastebin scrape output
+		if pasteScrapeResult is not None:
+			document.add_heading('Pastebin URLs for %s' % l, level=3)
+			document.add_paragraph(pasteScrapeResult)
+			document.add_page_break()
+			#document.add_paragraph(pasteScrapeContent)
+			#document.add_page_break()
 
 
 
 		#general scrape output
-		document.add_heading('Website Scraping Results for %s' % l, level=3)
-		paragraph = document.add_paragraph()
-		for sr in scrapeResult:
-			runParagraph = paragraph.add_run(sr)
-			#set font stuff
-			font=runParagraph.font
-			font.name = 'Arial'
-			font.size = Pt(10)
+		if scrapeResult is not None:
+			document.add_heading('Website Scraping Results for %s' % l, level=3)
+			paragraph = document.add_paragraph()
+			for sr in scrapeResult:
+				runParagraph = paragraph.add_run(sr)
+				#set font stuff
+				font=runParagraph.font
+				font.name = 'Arial'
+				font.size = Pt(10)
 
-		document.add_page_break()
+			document.add_page_break()
 		
-
-		document.add_paragraph(pasteContent)
-		document.add_page_break()
-
-
 		print '[+] Writing file: ./reports/%s/OSINT_%s_.docx'  % (l, l)
 		document.save(reportDir+'OSINT_%s_.docx' % l)
 
