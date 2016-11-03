@@ -67,7 +67,7 @@ def main():
 	parser.add_argument('-n', '--nslookup',help = 'Name query DNS for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
 	parser.add_argument('-p', '--pastebinsearch', nargs = '+', help = 'Search google for <arg> site:pastebin.com. Requires a pro account if you dont want to get blacklisted.')
 	parser.add_argument('-s', '--shodan', nargs = 1, help = 'query Shodan, optionally provide -s <apikey>')
-	parser.add_argument('-S', '--scraper', nargs = '+', help = 'Scrape pastebin, github, indeed, more to be added. Args are scrape keywords if applicable. Doesnt really work well right now')
+	parser.add_argument('-S', '--scraper', help = 'Scrape pastebin, github, indeed, more to be added.', action = 'store_true')
 	parser.add_argument('-t', '--theharvester', help = 'Invoke theHarvester', action = 'store_true')
 	parser.add_argument('-v', '--verbose', help = 'Verbose', action = 'store_true')	
 	parser.add_argument('-w', '--whois', help = 'query Whois for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
@@ -92,6 +92,7 @@ def main():
 		args.nslookup = True
 		args.theharvester = True
 		args.whois = True
+		args.scraper = True
 
 	#validate entered IP address? do we even care about IP address? i and d do the same shit
 	if args.ipaddress is not None:
@@ -113,9 +114,10 @@ def main():
 		args.googledork is None and \
 		args.shodan is None and \
 		args.creds is False and \
-		args.scraper is None and \
 		args.theharvester is False and \
+		args.scraper is False and \
 		args.pastebinsearch is None and \
+		args.scraper is None and \
 		args.foca is False):
 		print '[-] No options specified, use -h or --help for a list'
 		sys.exit()
@@ -183,7 +185,7 @@ def main():
 		credResult=credential_leaks(args, lookup, startTime, reportDir)
 	
 	#call function if -S arg
-	if args.scraper is not None:
+	if args.scraper is True:
 		scrapeResult=scrape_sites(args, lookup, reportDir)
 
 	if args.foca is True:
@@ -232,14 +234,14 @@ def hibp_search(args, lookup, reportDir):
 def scrape_sites(args, lookup, reportDir):
 	scrapeResult=[]
 	userAgent = {'User-agent': 'Mozilla/5.0'}
+	a=''
+
+	if args.scraper is True:
+		for i,l in enumerate(lookup):
+			scrapeFile=open(reportDir+''.join(l)+'_scrape.txt','w')
 
 
-	for i,l in enumerate(lookup):
-		scrapeFile=open(reportDir+''.join(l)+'_scrape.txt','w')
-
-		print '[+] Scraping sites using '+ l
-
-		for a in args.scraper:
+			print '[+] Scraping sites using '+ l
 
 			#init list and insert domain with tld stripped
 			#insert lookup value into static urls
@@ -263,38 +265,43 @@ def scrape_sites(args, lookup, reportDir):
 
 				#build html tree
 				tree = html.fromstring(page.content)
-				
+
 				#indeed matches jobs. yeah yeah it doesnt use their api yet
-				if name is 'indeed':
+				if name == 'indeed':
+					if args.verbose is True:print '[+] Searching job postings on indeed.com for %s' % l
 					jobCount = tree.xpath('//span[@class="cmp-jobs-count-number"]/text()')
-					print '[+] '+str(''.join(jobCount)) + ' jobs posted on indeed'
+					print '[+] '+str(''.join(jobCount)) + ' jobs posted on indeed that match '+ l +'\n'
 					jobTitle = tree.xpath('//a[@class="cmp-job-url"]/text()')
+					scrapeResult.append('Job postings on indeed.com that match %s \n\n' % l)
 					for t in jobTitle:
 						scrapeResult.append(t+'\n')
+						if args.verbose is True: print t
 
 
 				#github matches search for user supplied domain
 				#https://developer.github.com/v3/search/
 				#http://docs.python-guide.org/en/latest/scenarios/json/
-				if name is 'github':
+				if name == 'github':
+					if args.verbose is True:print '[+] Searching repository names on Github for %s' % (l.split('.')[0])
 					gitJson = json.loads(page.text)
 					#grab repo name
+					scrapeResult.append('\n\nRepositories Matching '+(l.split('.')[0])+'\n\n')
 					for c,i in enumerate(gitJson['items']):
 						scrapeResult.append(i['full_name']+'\n')
-					print '[+] Found '+str(c+1)+' repositories matching '+ (l.split('.')[0])
+					print '[+] Found '+str(c+1)+' repositories matching '+ (l.split('.')[0]) + '\n'
 
 
-					
+						
 			#write the file
 			for s in scrapeResult:
 				scrapeFile.writelines(''.join(str(s.encode('utf8'))))
-				
+					
 			#verbosity logic
 			if args.verbose is True:
 				for r in scrapeResult: print ''.join(r.strip('\n'))
-			
+				
 
-	return scrapeResult
+		return scrapeResult
 
 #*******************************************************************************
 #queries whois of ip or domain set in lookup, dumps to stdout if -v is set, writes to txt file either way.
