@@ -226,7 +226,10 @@ def hibp_search(args, lookup, reportDir):
 #zone transfer host -a does this?
 #ike endpoints
 #http screnshots
-
+#*******************************************************************************
+#salesforce api
+#*******************************************************************************
+# recon-ng
 #*******************************************************************************
 #generic site scraper (well, mainly an interface to available search APIs) 
 #that uses fixed set of sites defined in scrapeUrls dictionary to look for 
@@ -235,6 +238,7 @@ def scrape_sites(args, lookup, reportDir):
 	scrapeResult=[]
 	userAgent = {'User-agent': 'Mozilla/5.0'}
 	a=''
+
 
 	if args.scraper is True:
 		for i,l in enumerate(lookup):
@@ -286,9 +290,10 @@ def scrape_sites(args, lookup, reportDir):
 					gitJson = json.loads(page.text)
 					#grab repo name
 					scrapeResult.append('\n\nRepositories Matching '+(l.split('.')[0])+'\n\n')
-					for c,i in enumerate(gitJson['items']):
+					i=0
+					for i,c in gitJson['items']:
 						scrapeResult.append(i['full_name']+'\n')
-					print '[+] Found '+str(c+1)+' repositories matching '+ (l.split('.')[0]) + '\n'
+					print '[+] Found '+str(i)+' repositories matching '+ (l.split('.')[0]) + '\n'
 
 
 						
@@ -392,6 +397,7 @@ def google_search(args, lookup, reportDir):
 	else:
 
 		for d in args.googledork:
+			print d
 			if args.verbose is True:print 'dorking for %s' % d
 			
 			#default to password if no arg
@@ -818,7 +824,7 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		font=runParagraph.font
 		font.name = 'Arial'
 		font.size = Pt(10)
-		runParagraph = paragraph.add_run('\nSpecific data sources include: whois, domain name system (DNS) records, Google dork results, matches from recent compromises such as LinkedIn. Other sources include results from Shodan, document metadata from theHarvester and pyFoca, as well as queries to Pastebin, Github, job boards, etc. \n')
+		runParagraph = paragraph.add_run('\nSpecific data sources include: whois, domain name system (DNS) records, Google dork results, and data from recent compromises such as LinkedIn. Other sources include results from Shodan, document metadata from theHarvester and pyFoca, as well as queries to Pastebin, Github, job boards, etc. \n')
 		font=runParagraph.font
 		font.name = 'Arial'
 		font.size = Pt(10)
@@ -900,7 +906,13 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		#harvester output
 		if harvesterResult:
 			print '[+] Adding theHarvester results to report'
-			document.add_heading('theHarvester Results for: %s' % l, level=3)
+			#header
+			heading = document.add_heading(level=3)
+			runHeading = heading.add_run('theHarvester Results for: %s' % l)
+			font=runHeading.font
+			font.name = 'Arial'
+			font.color.rgb = RGBColor(0xe9,0x58,0x23)
+			#content
 			paragraph = document.add_paragraph()
 			for h in harvesterResult: 
 				runParagraph = paragraph.add_run(''.join(h))
@@ -925,7 +937,13 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		#general scrape output
 		if scrapeResult:
 			print '[+] Adding website scraping results to report'
-			document.add_heading('Website Scraping Results for %s' % l, level=3)
+			#header
+			heading = document.add_heading(level=3)
+			runHeading = heading.add_run('Website Scraping Results for %s' % l)
+			font=runHeading.font
+			font.name = 'Arial'
+			font.color.rgb = RGBColor(0xe9,0x58,0x23)
+			#content
 			paragraph = document.add_paragraph()
 			for sr in scrapeResult:
 				runParagraph = paragraph.add_run(sr)
