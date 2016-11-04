@@ -274,7 +274,7 @@ def scrape_sites(args, lookup, reportDir):
 				if name == 'indeed':
 					if args.verbose is True:print '[+] Searching job postings on indeed.com for %s' % l
 					jobCount = tree.xpath('//span[@class="cmp-jobs-count-number"]/text()')
-					print '[+] '+str(''.join(jobCount)) + ' jobs posted on indeed that match '+ l +'\n'
+					print '[+] '+str(''.join(jobCount)) + '[+] Jobs posted on indeed.com that match '+ l +'\n'
 					jobTitle = tree.xpath('//a[@class="cmp-job-url"]/text()')
 					scrapeResult.append('Job postings on indeed.com that match %s \n\n' % l)
 					for t in jobTitle:
@@ -290,9 +290,8 @@ def scrape_sites(args, lookup, reportDir):
 					gitJson = json.loads(page.text)
 					#grab repo name
 					scrapeResult.append('\n\nRepositories Matching '+(l.split('.')[0])+'\n\n')
-					i=0
-					for i,c in gitJson['items']:
-						scrapeResult.append(i['full_name']+'\n')
+					for i,r in enumerate(gitJson['items']):
+						scrapeResult.append(gitJson['items'][i]['full_name']+'\n')
 					print '[+] Found '+str(i)+' repositories matching '+ (l.split('.')[0]) + '\n'
 
 
