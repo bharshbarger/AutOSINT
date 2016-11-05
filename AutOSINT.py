@@ -555,6 +555,7 @@ def shodan_search(args, lookup, reportDir, apiKeyDir):
 
 	#list that we'll return
 	shodanResult = []
+	shodanApiKey=''
 
 	#check for api key file
 	if not os.path.exists(apiKeyDir + 'shodan.key'):
@@ -694,7 +695,8 @@ def pastebin_search(args, lookup, reportDir, apiKeyDir):
 					#search lines for lookup and keyword
 					for line in rawPasteData:
 						#regex for the lookup value (domain) in that line
-						if re.search((str(l)), line):
+						#if re.search((str(l)), line):
+						if str(l) in line:
 							#if the argument search term is in the line
 							if a in line:
 								scrapedFile.writelines(a)
@@ -805,7 +807,8 @@ def credential_leaks(args, lookup, startTime, reportDir):
 					#line counter index. i thought maybe i could also display how many lines were searched
 					#i=i+1
 					#regex search for our current lookup value l
-					if re.search((str(l)), line):
+					#if re.search((str(l)), line):
+					if str(l) in line:
 						#counter index
 						j=j+1
 						#look for a colon delimiter. dump files should be like email:hash. this of course assumes the creds file has emails as usernames
