@@ -20,17 +20,19 @@
 
 #bugs
 #need newlines on google output in docx report
-#setting default  of 'password in argparse not liking default=['password']'
+#setting default arg of password if nothing entered not working
 
 
 #todo
 #reporting dorks, keys, training, get foca working
+#get multi domain working correctly for -d, until then, limited to 1
 
 import sys
 import time
 import argparse
 import subprocess
 import socket
+import urllib
 import urllib2
 import shodan
 import docx
@@ -40,6 +42,7 @@ import re
 import os
 from google import search
 import json
+import pprint
 from lxml import html
 import requests
 from collections import Counter
@@ -59,15 +62,16 @@ def main():
 	#set nargs back to + for multi search of domain or ip (still really buggy)
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-a', '--all', help = 'run All queries', action = 'store_true')
+	parser.add_argument('-b', '--hibp', help='Search haveibeenpwned.com for breaches related to a domain', action='store_true')
 	parser.add_argument('-c', '--creds', help = 'Search local copies of credential dumps', action = 'store_true')
 	parser.add_argument('-d', '--domain', nargs = 1, help = 'the Domain you want to search.')
 	parser.add_argument('-f', '--foca', help = 'invoke pyfoca', action = 'store_true')
-	parser.add_argument('-g', '--googledork', nargs = '*',help = 'query Google for supplied args that are treated as a dork. i.e. -g password becomes a search for "password site:<domain>"')
+	parser.add_argument('-g', '--googledork', nargs = '+',help = 'query Google for supplied args that are treated as a dork. i.e. -g password becomes a search for "password site:<domain>". Combine terms inside of quotes like "site:rapid7.com inurl:aspx" ')
 	parser.add_argument('-i', '--ipaddress', nargs = 1, help = 'the IP address you want to search. Must be a valid IP. ')
 	parser.add_argument('-n', '--nslookup',help = 'Name query DNS for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
 	parser.add_argument('-p', '--pastebinsearch', nargs = '+', help = 'Search google for <arg> site:pastebin.com. Requires a pro account if you dont want to get blacklisted.')
-	parser.add_argument('-s', '--shodan', nargs = 1, help = 'query Shodan, optionally provide -s <apikey>')
-	parser.add_argument('-S', '--scraper', help = 'Scrape pastebin, github, indeed, more to be added.', action = 'store_true')
+	parser.add_argument('-s', '--shodan', help = 'query Shodan, API keys stored in ./api_keys/', action='store_true')
+	parser.add_argument('-S', '--scraper', help = 'Scrape pastebin, github, indeed, more to be added. API keys stored in ./api_keys/', action = 'store_true')
 	parser.add_argument('-t', '--theharvester', help = 'Invoke theHarvester', action = 'store_true')
 	parser.add_argument('-v', '--verbose', help = 'Verbose', action = 'store_true')	
 	parser.add_argument('-w', '--whois', help = 'query Whois for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
@@ -88,11 +92,28 @@ def main():
 	#set True on action store_true args if -a
 	if args.all is True:
 		args.creds = True
+		args.hibp = True
 		args.foca = True
 		args.nslookup = True
 		args.theharvester = True
 		args.whois = True
 		args.scraper = True
+		args.shodan = True
+		if args.googledork is None:
+			print '[-] You need to provide arguments for google dorking. e.g -g inurl:apsx'
+			sys.exit()
+		if args.pastebinsearch is None:
+			print '[-] You need to provide arguments for pastebin keywords. e.g -p password id_rsa'
+			sys.exit()
+
+	#check directories
+	reportDir='./reports/'
+	apiKeyDir='./api_keys/'
+	if not os.path.exists(reportDir):
+		os.makedirs(reportDir)
+
+	if not os.path.exists(apiKeyDir):
+		os.makedirs(apiKeyDir)
 
 	#validate entered IP address? do we even care about IP address? i and d do the same shit
 	if args.ipaddress is not None:
@@ -110,14 +131,14 @@ def main():
 
 	#if no queries defined, exit. -a sets all so we're good there
 	if (args.whois is False and \
+		args.hibp is False and \
 		args.nslookup is False and \
 		args.googledork is None and \
-		args.shodan is None and \
+		args.shodan is False and \
 		args.creds is False and \
 		args.theharvester is False and \
 		args.scraper is False and \
 		args.pastebinsearch is None and \
-		args.scraper is None and \
 		args.foca is False):
 		print '[-] No options specified, use -h or --help for a list'
 		sys.exit()
@@ -127,21 +148,23 @@ def main():
 		for d in args.domain:
 			lookup = args.domain
 			for l in lookup:
-				reportDir='./reports/'+l+'/'
-				#check directories
-				if not os.path.exists(reportDir):
-					os.makedirs(reportDir)
+				if not os.path.exists(reportDir+'/'+l):
+					os.makedirs(reportDir+'/'+l)
+				
 	else:
 		for i in args.ipaddress:
 			lookup = args.ipaddress
 			for l in lookup:
-					reportDir='./reports/'+l+'/'
-					#check directories
-					if not os.path.exists(reportDir):
-						os.makedirs(reportDir)
+				if not os.path.exists(reportDir+'/'+l):
+					os.makedirs(reportDir+'/'+l)
 
 	if args.verbose is True:
-		print "[+] Lookup value(s): "+ str(lookup)
+		print '[+] Lookup Values: '+', '.join(lookup)
+
+
+
+
+
 
 	#init results lists
 	
@@ -155,10 +178,15 @@ def main():
 	scrapeResult=[]
 	credResult=[]
 	pyfocaResult=[]
+	hibpResult=[]
 
 	#call function if -w arg
 	if args.whois is True:
 		whoisResult = whois_search(args, lookup, reportDir)
+
+	#call function if -b arg
+	if args.hibp is True:
+		hibpResult = hibp_search(args, lookup, reportDir)
 	
 	#call function if -n arg
 	if args.nslookup is True:
@@ -169,12 +197,12 @@ def main():
 		googleResult=google_search(args, lookup, reportDir)
 
 	#call function if -s arg
-	if args.shodan is not None:
-		shodanResult = shodan_search(args, lookup, reportDir)
+	if args.shodan is True:
+		shodanResult = shodan_search(args, lookup, reportDir, apiKeyDir)
 	
 	#call function if -p arg
 	if args.pastebinsearch is not None:
-		pasteScrapeResult=pastebin_search(args, lookup, reportDir)
+		pasteScrapeResult=pastebin_search(args, lookup, reportDir, apiKeyDir)
 	
 	# call function if -t arg
 	if args.theharvester is True:
@@ -186,10 +214,13 @@ def main():
 	
 	#call function if -S arg
 	if args.scraper is True:
-		scrapeResult=scrape_sites(args, lookup, reportDir)
-
+		scrapeResult=scrape_sites(args, lookup, reportDir, apiKeyDir)
+	#call function if -f arg
 	if args.foca is True:
 		pyfocaResult=pyfoca(args, lookup, reportDir)
+
+	#if args.hibp is True:
+		#hibpResult=hibp_search(args, lookup, reportDir, apiKeyDir)
 
 
 	#run the docx report. text files happen in the respective functions
@@ -200,15 +231,37 @@ def main():
 #hibp api search to implement
 #https://haveibeenpwned.com/API/v2
 def hibp_search(args, lookup, reportDir):
-	print 'coming soon'
+	userAgent = {'User-agent': 'Mozilla/5.0'}
+	if args.hibp is True:
+		for i,l in enumerate(lookup):
+			print '[+] Searching haveibeenpwned.com for %s' % l
+			scrapeFile=open(reportDir+l+'/'+l+'_scrape.txt','w')
+			url = 'https://haveibeenpwned.com/api/v2/breachedaccount/test@example.com?domain=%s' % l
+
+
+			if args.verbose is True:print '[+] Searching haveibeenpwned.com for %s' % (l.split('.')[0])
+
+			#http://docs.python-guide.org/en/latest/scenarios/scrape/
+			try:
+				page = requests.get(url, headers = userAgent, verify=False)
+				#build html tree
+				page.json()
+				
+
+			except:
+				print '[-] Connection error or no result on ' + url +':'
+				print '[-] Status code %s' % page.status_code
+				continue
+
+		
+
+
 #*******************************************************************************
 #ssl scan 
 #*******************************************************************************
 #censys
 #https://www.censys.io/ipv4?q=rapid7.com
-#*******************************************************************************
-#virustotal passive dns api
-#https://www.virustotal.com/en/documentation/public-api/#getting-domain-reports
+#rest api  https://www.censys.io/api/v1/
 #*******************************************************************************
 #https://dnsdumpster.com/
 #cool mapping of AS, etc
@@ -230,80 +283,139 @@ def hibp_search(args, lookup, reportDir):
 #salesforce api
 #*******************************************************************************
 # recon-ng
+#
 #*******************************************************************************
 #generic site scraper (well, mainly an interface to available search APIs) 
 #that uses fixed set of sites defined in scrapeUrls dictionary to look for 
 #various things like job postings and user supplied keywords where applicable
-def scrape_sites(args, lookup, reportDir):
+#http://docs.python-guide.org/en/latest/scenarios/scrape/
+def scrape_sites(args, lookup, reportDir, apiKeyDir):
 	scrapeResult=[]
 	userAgent = {'User-agent': 'Mozilla/5.0'}
 	a=''
+	indeedResult=[]
+	githubResult=[]
+	virusTotalResult=[]
+	vtApiKey=''
+	vtParams ={}
 
 
 	if args.scraper is True:
 		for i,l in enumerate(lookup):
-			scrapeFile=open(reportDir+''.join(l)+'_scrape.txt','w')
-
+			scrapeFile=open(reportDir+l+'/'+l+'_scrape.txt','w')
 
 			print '[+] Scraping sites using '+ l
-
+			#http://www.indeed.com/jobs?as_and=ibm.com&as_phr=&as_any=&as_not=&as_ttl=&as_cmp=&jt=all&st=&salary=&radius=25&fromage=any&limit=500&sort=date&psf=advsrch
 			#init list and insert domain with tld stripped
 			#insert lookup value into static urls
 			scrapeUrls = {\
-			'indeed':'http://www.indeed.com/cmp/%s/jobs?q=%s' % (l.split('.')[0], a),\
+			'indeed':'http://www.indeed.com/jobs?as_and=%s&limit=500&sort=date' % (l.split('.')[0]),\
 			'github':'https://api.github.com/search/repositories?q=%s&sort=stars&order=desc' % (l.split('.')[0]),#pull off the tld\
 			#'glassdoor':'https://www.glassdoor.com/Reviews/company-reviews.htm?suggestCount=0&suggestChosen=false&clickSource=searchBtn&typedKeyword=%s&sc.keyword=%s&locT=&locId=' % (l.split('.')[0],l.split('.')[0]),\
 			#'slideshare':'http://www.slideshare.net/%s' % (l.split('.')[0]),\
-			#'':'',\
+			'virustotal':'https://www.virustotal.com/vtapi/v2/domain/report',\
+			'censys':'https://www.censys.io/api/v1'\
+			#'':''\
+			#'':''\
+			#'':''\
+			#'':''\
+			#'':''\
+			#'':''\
+			#'':''\
+			#'':''\
+			#'':''\
+			#'':''\
 			#'':''\
 			}
 
 			for name,url in scrapeUrls.items():
-				if args.verbose is True:print '[+] Scraping '+ name
-				#http://docs.python-guide.org/en/latest/scenarios/scrape/
-				try:
-					page = requests.get(url, headers = userAgent)
-				except:
-					print '[-] Scraping error on ' + url +':'
-					continue
-
-				#build html tree
-				tree = html.fromstring(page.content)
-
 				#indeed matches jobs. yeah yeah it doesnt use their api yet
 				if name == 'indeed':
-					if args.verbose is True:print '[+] Searching job postings on indeed.com for %s' % l
-					jobCount = tree.xpath('//span[@class="cmp-jobs-count-number"]/text()')
-					print '[+] '+str(''.join(jobCount)) + '[+] Jobs posted on indeed.com that match '+ l +'\n'
-					jobTitle = tree.xpath('//a[@class="cmp-job-url"]/text()')
-					scrapeResult.append('Job postings on indeed.com that match %s \n\n' % l)
-					for t in jobTitle:
-						scrapeResult.append(t+'\n')
-						if args.verbose is True: print t
+					if args.verbose is True:print '[+] Searching job postings on indeed.com for %s:' % l.split('.')[0]
+					
+					#http://docs.python-guide.org/en/latest/scenarios/scrape/
+					try:
+						ipage = requests.get(url, headers = userAgent)
+					except:
+						print '[-] Scraping error on ' + url +':'
+						continue
 
+					#build html tree
+					itree = html.fromstring(ipage.content)
+
+					#count jobs
+					jobCount = itree.xpath('//div[@id="searchCount"]/text()')
+					print '[+] '+str(''.join(jobCount)) + ' Jobs posted on indeed.com that match %s:' % (l.split('.')[0])
+					jobTitle = itree.xpath('//a[@data-tn-element="jobTitle"]/text()')
+					indeedResult.append('\n[+] Job postings on indeed.com that match %s \n\n' % l.split('.')[0])
+					for t in jobTitle:
+						indeedResult.append(t+'\n')
 
 				#github matches search for user supplied domain
 				#https://developer.github.com/v3/search/
 				#http://docs.python-guide.org/en/latest/scenarios/json/
 				if name == 'github':
 					if args.verbose is True:print '[+] Searching repository names on Github for %s' % (l.split('.')[0])
-					gitJson = json.loads(page.text)
-					#grab repo name
-					scrapeResult.append('\n\nRepositories Matching '+(l.split('.')[0])+'\n\n')
-					for i,r in enumerate(gitJson['items']):
-						scrapeResult.append(gitJson['items'][i]['full_name']+'\n')
-					print '[+] Found '+str(i)+' repositories matching '+ (l.split('.')[0]) + '\n'
 
+					#http://docs.python-guide.org/en/latest/scenarios/scrape/
+					try:
+						gpage = requests.get(url, headers = userAgent)
+					except:
+						print '[-] Scraping error on ' + url +':'
+						continue
 
-						
-			#write the file
-			for s in scrapeResult:
-				scrapeFile.writelines(''.join(str(s.encode('utf8'))))
+					#read json response
+					gitJson = gpage.json()
 					
+					#grab repo name from json items>index val>full_name
+					githubResult.append('[+] Github repositories matching '+(l.split('.')[0])+'\n\n')
+					for i,r in enumerate(gitJson['items']):
+						githubResult.append(gitJson['items'][i]['full_name']+'\n')
+
+				if name == 'virustotal':
+					if not os.path.exists(apiKeyDir + 'virus_total.key'):
+						print '[-] You are missing %s/virus_total.key' % apiKeyDir
+						#vtApiKey=raw_input("Please provide an API Key: ")
+
+					#read API key
+					try:
+						with open(apiKeyDir + 'virus_total.key', 'r') as apiKeyFile:
+							for k in apiKeyFile:
+								vtApiKey = k
+					except:
+						print '[-] Error opening %s/virus_total.key key file, skipping. ' % apiKeyDir
+						continue
+
+
+					if args.verbose is True: print '[+] VirusTotal domain report for %s' % l
+					virusTotalResult.append('[+] VirusTotal domain report for %s' % l)
+
+					vtParams['domain']=l 
+					vtParams['apikey']=vtApiKey
+
+					#per their api reference
+					response = urllib.urlopen('%s?%s' % (url, urllib.urlencode(vtParams))).read()
+
+					#read json response
+					vtJson = json.loads(response)
+					#virusTotalResult.append(vtJson)
+
+
+
+			#write the file
+			for g in githubResult:
+				scrapeFile.writelines(''.join(str(g.encode('utf-8'))))
+			for i in indeedResult:
+				scrapeFile.writelines(''.join(str(i.encode('utf-8'))))
+					
+
+			scrapeResult.append(indeedResult)
+			scrapeResult.append(githubResult)	
+
 			#verbosity logic
 			if args.verbose is True:
-				for r in scrapeResult: print ''.join(r.strip('\n'))
-				
+				for gr in githubResult: print ''.join(gr.strip('\n'))
+				for ir in indeedResult: print ''.join(ir.strip('\n'))
 
 		return scrapeResult
 
@@ -318,7 +430,7 @@ def whois_search(args, lookup, reportDir):
 	for i, l in enumerate(lookup):
 		print '[+] Performing whois query ' + str(i + 1) + ' for ' + l
 		
-		whoisFile=open(reportDir+''.join(l)+'_whois.txt','w')
+		whoisFile=open(reportDir+l+'/'+l+'_whois.txt','w')
 
 		#subprocess open the whois command for current value of "l" in lookup list. 
 		#split into newlines instead of commas
@@ -351,7 +463,7 @@ def dns_search(args, lookup, reportDir):
 	#iterate the index and values of the lookup list
 	for i, l in enumerate(lookup):
 		print '[+] Performing DNS query '+ str(i + 1) + ' using "host -a ' + l+'"'
-		dnsFile=open(reportDir+''.join(l)+'_dns.txt','w')
+		dnsFile=open(reportDir+l+'/'+l+'_dns.txt','w')
 		#subprocess to run host -a on the current value of l in the loop, split into newlines
 		try:
 			dnsCmd = subprocess.Popen(['host', '-a', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\n')
@@ -373,22 +485,23 @@ def dns_search(args, lookup, reportDir):
 	return dnsResult
 
 #*******************************************************************************
-# this could be GREATLY improved.
+# this could be GREATLY improved. need to implement the custom search api
 # pass google dorks as args for now
 # GHDB password dorks https://www.exploit-db.com/google-hacking-database/9/
 # GHDB sensitive dirs https://www.exploit-db.com/google-hacking-database/3/
 # uses this awesome module https://pypi.python.org/pypi/google
 # requires beautifulsoup
+#https://stackoverflow.com/questions/4082966/what-are-the-alternatives-now-that-the-google-web-search-api-has-been-deprecated/11206266#11206266
 
 def google_search(args, lookup, reportDir):
 	#need a default dork list
 
 	#C58EA28C-18C0-4a97-9AF2-036E93DDAFB3 is string for open OWA attachments
-	# check for empty args
+
 	#init lists
 	googleResult = []
 
-	#if no args provided, default to 'password'
+	#if no args provided, default to 'password'. need an inner function?
 	if args.googledork is None:
 		print '[i] No dork args, defaulting to "password"'
 		args.googledork = ['password']
@@ -396,15 +509,14 @@ def google_search(args, lookup, reportDir):
 	else:
 
 		for d in args.googledork:
-			print d
-			if args.verbose is True:print 'dorking for %s' % d
+			if args.verbose is True:print '[+] Google dorking for: %s' % d
 			
 			#default to password if no arg
 
 			#iterate the lookup list
 			for i, l in enumerate(lookup):
 				googleResult.append('Google query for: '+str(d)+ ' ' + 'site:'+str(l))
-				googleFile=open(reportDir+''.join(l)+'_google_dork_'+str(d)+'.txt','w')
+				googleFile=open(reportDir+l+'/'+l+'_google_dork_'+str(d)+'.txt','w')
 
 				#show user whiat is being searched
 				print '[+] Google query ' + str(i + 1) + ' for "'+str(d)+' ' + 'site:'+str(l) + '"'
@@ -436,77 +548,79 @@ def google_search(args, lookup, reportDir):
 		
 
 #*******************************************************************************
-def shodan_search(args, lookup, reportDir):
+def shodan_search(args, lookup, reportDir, apiKeyDir):
 	#probably need to customize search type based on -i or -d		
 	#first if  https://shodan.readthedocs.io/en/latest/tutorial.html#connect-to-the-api
 	#else https://shodan.readthedocs.io/en/latest/tutorial.html#looking-up-a-host
 
-	#variable for api key fed from args
-	 
+	#list that we'll return
+	shodanResult = []
 
-	# If theres an api key via -s
-	if args.shodan is not None:
+	#check for api key file
+	if not os.path.exists(apiKeyDir + 'shodan.key'):
+		print '[-] You are missing %s/shodan.key' % apiKeyDir
+		#shodanApiKey=raw_input("Please provide an API Key: ")
 
-		shodanApiKey = args.shodan
-		
-		#list that we'll return
-		shodanResult = []
+	#read API key
+	try:
+		with open(apiKeyDir + 'shodan.key', 'r') as apiKeyFile:
+			for k in apiKeyFile:
+				shodanApiKey = k
+	except:
+		print '[-] Error opening %s/shodan.key key file, skipping. ' % apiKeyDir
 
-	
-		#invoke api with api key provided
-		shodanApi = shodan.Shodan(shodanApiKey)
+	#invoke api with api key provided
+	shodanApi = shodan.Shodan(shodanApiKey)
 
+	#roll through the lookup list from -i or -d
+	for i, l in enumerate(lookup):
 		#open output file
-		shodanFile=open(reportDir+''.join(lookup)+'_shodan.txt','w')
-		
-		#roll through the lookup list from -i or -d
-		for i, l in enumerate(lookup):
+		shodanFile=open(reportDir+l+'/'+l+'_shodan.txt','w')
 
-			'''#maybe just do the rest here instead of api?
-			url='https://exploits.shodan.io/api/search?query='+str(l)+'&key='+str(shodanApiKey)
-			try:
-				req = urllib2.Request(url)
-				scrapeContent = urllib2.urlopen(req).read()
-				time.sleep(1)
-				print scrapeContent
-			except Exception:
-					pass'''
 
-			#user notification that something is happening
-			print '[+] Querying Shodan via API search for ' + l
-			try:
-				#set results to api search of current lookup value
-				#https://shodan.readthedocs.io/en/latest/examples/basic-search.html
-				results = shodanApi.search(l)
-				#for each result
-				for result in results['matches']:
-					#append to shodanResult list
-					shodanResult.append(str(result))
 
-				'''exploits=shodanApi.exploits.search(l)
-				for ex in exploits:
-					shodanResult.append(str(ex))'''
-			#catch exceptions		
-			except shodan.APIError, e:
-				#print excepted error
-				print '[-] Shodan Error: %s' % e + ' Skipping!!!'
-				print '[!] You may need to specify an API key with -s <api key>'
-				return
-				
-		#verbosity logic
-		#add iterator to dump all results
-		if args.verbose is True:
-			print '[+] Results found: %s' % results['total']
+		#maybe just do the rest here instead of py api client?
+		#url='https://exploits.shodan.io/api/search?query='+str(l)+'&key='+str(shodanApiKey)
 
-		#write contents of shodanResult list. this needs formatted
-		shodanFile.writelines('%s hosts found: \n\n' % results['total'])
-		for r in shodanResult:
-			shodanFile.writelines('%s \n' % result['ip_str'])
-			shodanFile.writelines(result['data'])
-			shodanFile.writelines('****************\n')
 
-		print shodanResult
-		return shodanResult
+		#user notification that something is happening
+		print '[+] Querying Shodan via API search for ' + l
+		try:
+			#set results to api search of current lookup value
+			#https://shodan.readthedocs.io/en/latest/examples/basic-search.html
+			result = shodanApi.search(l)
+			print '[+] Shodan found: '+str(result['total'])+' hosts'
+			#for each result
+			for service in result['matches']:
+				if args.verbose is True:print str(service['ip_str'].encode('utf-8')+\
+					' ISP: '+service['isp'].encode('utf-8')+\
+					' Last seen: '+service['timestamp'].encode('utf-8'))
+				if args.verbose is True:print service['data'].encode('utf-8')
+
+				#append to shodanResult list
+				shodanResult.append(str(\
+					service['ip_str'].encode('utf-8')+\
+					'\nISP:'+service['isp'].encode('utf-8')+\
+					'\nLast seen:'+service['timestamp'].encode('utf-8'))+\
+					'\n'+service['data'].encode('utf-8'))				
+
+
+
+			'''exploits=shodanApi.exploits.search(l)
+			for ex in exploits:
+				shodanResult.append(str(ex))'''
+		#catch exceptions		
+		except shodan.APIError, e:
+			#print excepted error
+			print '[-] Shodan Error: %s' % e + ' Skipping!!!'
+			print '[!] You may need to specify an API key with -s <api key>'
+			return
+			
+	#write contents of shodanResult list. this needs formatted
+	shodanFile.writelines('[+] Shodan found: '+str(result['total'])+' hosts\n\n')
+	shodanFile.writelines(shodanResult)
+
+	return shodanResult
 
 
 	
@@ -514,82 +628,80 @@ def shodan_search(args, lookup, reportDir):
 #right now this just google dorks a supplied arg for site:pastebin.com
 #need to implement scraping api http://pastebin.com/api_scraping_faq
 #scraping url is here http://pastebin.com/api_scraping.php
-def pastebin_search(args, lookup, reportDir):
+def pastebin_search(args, lookup, reportDir, apiKeyDir):
 	
+	userAgent = {'User-agent': 'Mozilla/5.0'}
+	
+	#return values
+	pasteScrapeUrl = []
+	pasteScrapeContent = []
+	pasteScrapeResult =[]
+
 	# check for empty args
 	if args.pastebinsearch is not None:
-		print '[!] requires a Pastebin Pro account for IP whitelisting'
 
-		pasteScrapeResult = []
-		pasteScrapeContent = []
-
-
-		if args.pastebinsearch is None:
-			print '[-] No pastebin search string provided. Skipping! Provide with -p <search items>'
-			return
 
 		for a in args.pastebinsearch:
 			#init lists
-			scrapeResult = []
+			scrapeURL = []
 			scrapeContent = []
 
 			#iterate the lookup list
 			for i, l in enumerate(lookup):
 
-				scrapedFile=open(reportDir+''.join(l)+'_pastebin_content.txt','w')
-				pasteUrlFile=open(reportDir+''.join(l)+'_pastebin_urls.txt','w')
+				#init textfiles
+				scrapedFile=open(reportDir+l+'/'+l+'_pastebin_content.txt','w')
+				pasteUrlFile=open(reportDir+l+'/'+l+'_pastebin_urls.txt','w')
+				
 				#show user whiat is being searched
-				print 'Google query #' + str(i + 1) + ' for '+  str(a) +' '+ str(l) + ' site:pastebin.com'
-				
+				print '[+] Searching Pastebin for public pastes containing %s' % (l)
+				print '[i] May require a Pastebin Pro account for IP whitelisting'
+
+
+				#run google query code
 				try:
-					#iterate url results from search of dork arg and supplied lookup value against pastebin
+					#iterate url results from search of dork arg and supplied lookup value against pastebin. return top 20 hits
 					for url in search(str(a) +' '+ str(l) + ' site:pastebin.com', stop = 20):
-						#time.sleep(1)
-
+						#delay 1 second to be polite
+						time.sleep(1)
 						#append results together
-						pasteScrapeResult.append(url)
-						
-						time.sleep(1)
-						print url()
+						scrapeURL.append(url)
+						if args.verbose is True:print '[+] Paste containing "%s" and "%s" found at: %s' (a,l,url)
 				except Exception:
-					print '[-] Error scraping pastebin, skipping...'
-					pasteScrapeResult.append('Error scraping pastebin')
-					pass
+					print '[-] Error dorking pastebin URLs, skipping...'
+					pasteScrapeResult.append('Error scraping Pastebin')
+					continue
 
-				for r in scrapeResult:
+				for u in scrapeURL:
+					#http://docs.python-guide.org/en/latest/scenarios/scrape/
 					try:
-						req = urllib2.Request(r)
-						print 'Opening ' + r
-						pasteScrapeContent = urllib2.urlopen(req).read()
-						time.sleep(1)
-						pasteScrapeContent.append()
+						page = requests.get(u, headers = userAgent)
+						pasteUrlFile.writelines(u)
+					except:
+						print '[-] Error opening ' + u +':'
+						pasteScrapeResult.append('Error opening %s' % u)
+						continue
 
-					except Exception:
-						print '[-] Error scraping pastebin, skipping...'
-						pasteScrapeContent.append('Error scraping pastebin')
-						pass
+
+					#build html tree
+					tree = html.fromstring(page.content)
+
+					#if verbose spit out url, search term and domain searched
+					if args.verbose is True:print '[+] Looking for instances of %s and %s in %s \n' % (a,l,url)
+					#grab raw paste data from the textarea
+					rawPasteData = tree.xpath('//textarea[@class="paste_code"]/text()')
+
+					#search lines for lookup and keyword
+					for line in rawPasteData:
+						#regex for the lookup value (domain) in that line
+						if re.search((str(l)), line):
+							#if the argument search term is in the line
+							if a in line:
+								scrapedFile.writelines(a)
+
+				return pasteScrapeResult
+
 				
-				
-				for y in scrapeResult:
-					scrapedFile.writelines(scrapeContent)
-
-				for z in scrapeContent:
-					pasteUrlFile.writelines(scrapeResult)
-				
-
-		#verbosity flag
-		'''if args.verbose is True:
-			for r in scrapeResult: print ''.join(r)
-			for c in scrapeContent: print ' '.join(c)'''
-
-		#return results list
-		return pasteScrapeResult
-
-
-	
-
-		
-
 #*******************************************************************************
 def the_harvester(args, lookup, reportDir):
 
@@ -606,7 +718,7 @@ def the_harvester(args, lookup, reportDir):
 		for i, l in enumerate(lookup):
 
 			#open file to write to
-			harvesterFile=open(reportDir+''.join(l)+'_theharvester.txt','w')
+			harvesterFile=open(reportDir+l+'/'+l+'_theharvester.txt','w')
 
 			#run harvester with -b google on lookup
 			try:
@@ -672,7 +784,7 @@ def credential_leaks(args, lookup, startTime, reportDir):
 	
 		#for each domain/ip provided
 		for l in lookup:
-			credFile=open(reportDir+''.join(l)+'_creds.txt','w')
+			credFile=open(reportDir+l+'/'+l+'_creds.txt','w')
 
 			#init dictionary
 			dumpDict={}
@@ -771,7 +883,7 @@ def pyfoca(args, lookup, reportDir):
 		for i, l in enumerate(lookup):
 
 			#open file to write to
-			pyfocaFile=open(reportDir+''.join(l)+'_pyfoca.txt','w')
+			pyfocaFile=open(reportDir+l+'/'+l+'_pyfoca.txt','w')
 
 			#run pyfoca with -d domain. should automagically do metadata
 			try:
@@ -790,6 +902,8 @@ def pyfoca(args, lookup, reportDir):
 			#spew if verbose
 			if args.verbose is True: 
 				for p in pyfocaResult:print '\n'.join(p)
+
+			return pyfocaResult
 
 #*******************************************************************************
 
@@ -956,10 +1070,17 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		#pyfoca results
 		if pyfocaResult:
 			print '[+] Adding pyfoca results to report'
-			document.add_heading('pyFoca Results for: %s' % l, level=3)
+			heading = document.add_heading(level=3)
+			runHeading = heading.add_run('pyFoca Results for: %s' % l)
+			font=runHeading.font
+			font.name = 'Arial'
+			font.color.rgb = RGBColor(0xe9,0x58,0x23)
+
+
 			paragraph = document.add_paragraph()
 			for fr in pyfocaResult:
-				runParagraph = paragraph.add_run('\n'.join(fr))
+				#lolwut
+				runParagraph = paragraph.add_run(''.join(str(fr).strip(("\\ba\x00b\n\rc\fd\xc3"))))
 				font=runParagraph.font
 				font.name = 'Arial'
 				font.size = Pt(10)
@@ -968,33 +1089,27 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		
 		#shodan output
 		if shodanResult:
-			#reading from file because im stupid and cant get the json formatted yet
-			'''#print shodanResult
-			parsed=json.loads(str(shodanResult))
-			json.dumps(parsed, indent=4, sort_keys=True)
+			heading = document.add_heading(level=3)
+			runHeading = heading.add_run('Shodan Results for: %s' % l)
+			font=runHeading.font
+			font.name = 'Arial'
+			font.color.rgb = RGBColor(0xe9,0x58,0x23)
 
-			
+
 			paragraph = document.add_paragraph()
-			runParagraph = paragraph.add_run(json.dumps(parsed, indent=4, sort_keys=True, separators=(',', ': '))) #and JSON spews forth'''
-
-			document.add_heading('Shodan Results for: %s' % l, level=3)
-			paragraph = document.add_paragraph()
-			try:
-				with open(reportDir+''.join(lookup)+'_shodan.txt','r') as f:
-					line = f.read().splitlines()
-					for li in line:
-						runParagraph = paragraph.add_run(li.rstrip('\n\r ')+'\n')
-						#set font stuff
-						font=runParagraph.font
-						font.name = 'Arial'
-						font.size = Pt(10)
-			except:
-				continue
-		
-
+			for shr in shodanResult:
+				try:
+					runParagraph = paragraph.add_run(str(shr).strip(("\\ba\x00b\n\rc\fd\xc3")))
+					#set font stuff
+					font=runParagraph.font
+					font.name = 'Arial'
+					font.size = Pt(10)
+				except:
+					print 'probably an encoding error...'
+					continue
 		
 		print '[+] Writing file: ./reports/%s/OSINT_%s_.docx'  % (l, l)
-		document.save(reportDir+'OSINT_%s_.docx' % l)
+		document.save(reportDir+l+'/'+l+'OSINT_%s_.docx' % l)
 
 
 if __name__ == '__main__':
