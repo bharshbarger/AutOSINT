@@ -7,7 +7,7 @@
 #google: https://pypi.python.org/pypi/google, also installs beautifulsoup
 
 
-docx
+python-docx
 shodan
 google
 
