@@ -19,9 +19,8 @@ a hashcat style pot file(hash:plain), and whatever open source dumps you already
 
     $ git clone https://github.com/bharshbarger/AutOSINT.git
     $ chmod +x AutOSINT.py
-    $ pip install --upgrade pip (optional)
 
-(if missing modules:)
+###(if missing modules:)
 
 https://github.com/achillean/shodan-python
 
