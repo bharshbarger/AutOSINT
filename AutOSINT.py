@@ -3,7 +3,8 @@
 #By @arbitrary_code
 
 #Special thanks to:
-#@Beamr, for helping with general coding expertise
+#@Beamr
+#@tatanus
 #unum alces!
 
 # poll various OSINT sources for data, write to .doc
@@ -294,7 +295,7 @@ def hibp_search(args, lookup, reportDir):
 #*******************************************************************************
 #salesforce api
 #*******************************************************************************
-# recon-ng
+#recon-ng
 #
 #*******************************************************************************
 #generic site scraper (well, mainly an interface to available search APIs) 
@@ -601,7 +602,7 @@ def shodan_search(args, lookup, reportDir, apiKeyDir):
 		try:
 			#set results to api search of current lookup value
 			#https://shodan.readthedocs.io/en/latest/examples/basic-search.html
-			result = shodanApi.search(l)
+			result = shodanApi.search(query="hostname:"+l)
 			print '[+] Shodan found: '+str(result['total'])+' hosts'
 			#for each result
 			for service in result['matches']:
