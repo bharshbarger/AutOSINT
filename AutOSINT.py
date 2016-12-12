@@ -27,6 +27,10 @@
 #reporting dorks, keys, training, get foca working
 #get multi domain working correctly for -d, until then, limited to 1
 
+# grep pgp keyservers for info
+#add header logo, toc and footers to report
+#httpscreenshot?
+
 import sys
 import time
 import argparse
@@ -38,6 +42,12 @@ import shodan
 import docx
 from docx.shared import Pt
 from docx.shared import RGBColor
+from docx.shared import Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+#toc testing
+from docx.oxml.shared import OxmlElement, qn
+
 import re
 import os
 from google import search
@@ -46,6 +56,7 @@ import pprint
 from lxml import html
 import requests
 from collections import Counter
+
 
 
 #python-docx: https://pypi.python.org/pypi/python-docx
@@ -230,12 +241,13 @@ def main():
 #*******************************************************************************
 #hibp api search to implement
 #https://haveibeenpwned.com/API/v2
+#https://haveibeenpwned.com/Pastes/Latest
 def hibp_search(args, lookup, reportDir):
 	userAgent = {'User-agent': 'Mozilla/5.0'}
 	if args.hibp is True:
 		for i,l in enumerate(lookup):
 			print '[+] Searching haveibeenpwned.com for %s' % l
-			scrapeFile=open(reportDir+l+'/'+l+'_scrape.txt','w')
+			scrapeFile=open(reportDir+l+'/'+l+'_haveibeenpwned.txt','w')
 			url = 'https://haveibeenpwned.com/api/v2/breachedaccount/test@example.com?domain=%s' % l
 
 
@@ -912,6 +924,7 @@ def pyfoca(args, lookup, reportDir):
 
 def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, harvesterResult, scrapeResult, credResult, pyfocaResult):
 
+	today = time.strftime("%m/%d/%Y")
 	for l in lookup:
 		print '[+] Starting OSINT report for '+l
 
@@ -923,31 +936,106 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 		#create a document 
 		document = docx.Document()
 
-		#add header
+
+		#add logo
+		document.add_picture('./resources/logo.png', height=Inches(1.25))
+
+		#add domain cover info
+
+		paragraph = document.add_paragraph() 
+		runParagraph = paragraph.add_run('%s' % l)
+		font=runParagraph.font
+		font.name = 'Arial'
+		font.size = Pt(28)
+		font.color.rgb = RGBColor(0x00,0x00,0x00)
+	
+		#add cover info
+		paragraph = document.add_paragraph() 
+		runParagraph = paragraph.add_run('Open Source Intelligence Report\n\n\n\n\n\n\n\n\n\n\n')
+		font=runParagraph.font
+		font.name = 'Arial'
+		font.size = Pt(26)
+		font.color.rgb = RGBColor(0xe9,0x58,0x23)
+
+		paragraph = document.add_paragraph() 
+		runParagraph = paragraph.add_run('Generated on: %s' % today)
+		font=runParagraph.font
+		font.name = 'Arial'
+		font.size = Pt(16)
+		font.color.rgb = RGBColor(0x00,0x00,0x00)
+
+
+		#page break for cover page
+		document.add_page_break()
+		
+		#add intro text on intropage
+
 		heading = document.add_heading()
-		runHeading = heading.add_run('Open Source Intelligence Report for: %s' % l)
+		runHeading = heading.add_run('Executive Summary')
 		font=runHeading.font
 		font.name = 'Arial'
+		font.size = Pt(20)
 		font.color.rgb = RGBColor(0xe9,0x58,0x23)
-		
-		#add intro text
+
 		paragraph = document.add_paragraph() 
 		runParagraph = paragraph.add_run('\nThis document contains information about network, technology, and people associated with the assessment targets. The information was obtained by programatically querying various free or low cost Internet data sources.\n')
 		font=runParagraph.font
 		font.name = 'Arial'
-		font.size = Pt(10)
+		font.size = Pt(11)
 		runParagraph = paragraph.add_run('\nThese data include information about the network, technology, and people associated with the targets.\n')
 		font=runParagraph.font
 		font.name = 'Arial'
-		font.size = Pt(10)
+		font.size = Pt(11)
 		runParagraph = paragraph.add_run('\nSpecific data sources include: whois, domain name system (DNS) records, Google dork results, and data from recent compromises such as LinkedIn. Other sources include results from Shodan, document metadata from theHarvester and pyFoca, as well as queries to Pastebin, Github, job boards, etc. \n')
 		font=runParagraph.font
 		font.name = 'Arial'
-		font.size = Pt(10)
+		font.size = Pt(11)
 
 		
 		#page break for cover page
 		document.add_page_break()
+
+		heading = document.add_heading()
+		runHeading = heading.add_run('Table of Contents')
+		font=runHeading.font
+		font.bold = True
+		font.name = 'Arial'
+		font.size = Pt(20)
+		font.color.rgb = RGBColor(0x0,0x0,0x0)
+
+		#TOC https://github.com/python-openxml/python-docx/issues/36
+		paragraph = document.add_paragraph()
+		run = paragraph.add_run()
+		font.name = 'Arial'
+		font.size = Pt(11)
+		fldChar = OxmlElement('w:fldChar')  # creates a new element
+		fldChar.set(qn('w:fldCharType'), 'begin')  # sets attribute on element
+
+		instrText = OxmlElement('w:instrText')
+		instrText.set(qn('xml:space'), 'preserve')  # sets attribute on element
+		instrText.text = 'TOC \o "1-3" \h \z \u'   # change 1-3 depending on heading levels you need
+
+		fldChar2 = OxmlElement('w:fldChar')
+		fldChar2.set(qn('w:fldCharType'), 'separate')
+		fldChar3 = OxmlElement('w:t')
+		fldChar3.text = "Right-click to update field."
+		fldChar2.append(fldChar3)
+
+		fldChar4 = OxmlElement('w:fldChar')
+		fldChar4.set(qn('w:fldCharType'), 'end')
+
+		r_element = run._r
+		r_element.append(fldChar)
+		r_element.append(instrText)
+		r_element.append(fldChar2)
+		r_element.append(fldChar4)
+		p_element = paragraph._p
+
+
+
+		#page break for toc
+		document.add_page_break()
+
 
 		if credResult:
 			print '[+] Adding credential dump results to report'
@@ -962,7 +1050,7 @@ def write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, 
 				runParagraph = paragraph.add_run(''.join(c))
 				font=runParagraph.font
 				font.name = 'Arial'
-				font.size = Pt(10)
+				font.size = Pt(11)
 			document.add_page_break()
 		
 		#add whois data with header and break after end
