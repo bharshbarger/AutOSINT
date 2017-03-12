@@ -7,56 +7,33 @@
 #@tatanus
 #unum alces!
 
-# poll various OSINT sources for data, write to .doc
-# whois - added
-# dns - added
-# shodan - added
-# scrape pastebin, etc.
-# google dorks via googlesearch.
-# BGP info - todo
-# AS info - todo
-# linkedin (from Nick)
-# read pw/keys from github
-# accept cidr input - todo
+try:
+	import sys
+	import time
+	import argparse
+	import subprocess
+	import socket
+	import urllib
+	import urllib2
+	import shodan
+	import docx
+	from docx.shared import Pt
+	from docx.shared import RGBColor
+	from docx.shared import Inches
+	from docx.enum.text import WD_ALIGN_PARAGRAPH
+	from docx.oxml.shared import OxmlElement, qn
 
-#bugs
-#need newlines on google output in docx report
-#setting default arg of password if nothing entered not working
-
-
-#todo
-#reporting dorks, keys, training, get foca working
-#get multi domain working correctly for -d, until then, limited to 1
-
-# grep pgp keyservers for info
-#add header logo, toc and footers to report
-#httpscreenshot?
-
-import sys
-import time
-import argparse
-import subprocess
-import socket
-import urllib
-import urllib2
-import shodan
-import docx
-from docx.shared import Pt
-from docx.shared import RGBColor
-from docx.shared import Inches
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-
-#toc testing
-from docx.oxml.shared import OxmlElement, qn
-
-import re
-import os
-from google import search
-import json
-import pprint
-from lxml import html
-import requests
-from collections import Counter
+	import re
+	import os
+	from google import search
+	import json
+	import pprint
+	from lxml import html
+	import requests
+	from collections import Counter
+except ImportError as e:
+	raise ImportError('Error importing %s' % e)
+	sys.exit(1)
 
 
 
