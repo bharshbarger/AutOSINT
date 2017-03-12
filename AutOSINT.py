@@ -31,6 +31,9 @@ try:
 	from lxml import html
 	import requests
 	from collections import Counter
+
+	from webscrape import Scraper
+
 except ImportError as e:
 	raise ImportError('Error importing %s' % e)
 	sys.exit(1)
