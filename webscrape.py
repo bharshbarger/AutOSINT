@@ -1,10 +1,23 @@
 #!/usr/bin/env python
 
+import os
+import urllib
+import json
 
 class Scraper():
 
 
-	def scrape_sites(args, lookup, reportDir, apiKeyDir):
+	def __init__(self):
+		self.scrapeResult=[]
+		self.userAgent = {'User-agent': 'Mozilla/5.0'}
+		self.a=''
+		self.indeedResult=[]
+		self.githubResult=[]
+		self.virusTotalResult=[]
+		self.vtApiKey=''
+		self.vtParams ={}
+
+	def run(self, args, lookup, reportDir, apiKeyDir):
 		scrapeResult=[]
 		userAgent = {'User-agent': 'Mozilla/5.0'}
 		a=''
@@ -25,8 +38,8 @@ class Scraper():
 				scrapeUrls = {\
 				'indeed':'http://www.indeed.com/jobs?as_and=%s&limit=500&sort=date' % (l.split('.')[0]),\
 				'github':'https://api.github.com/search/repositories?q=%s&sort=stars&order=desc' % (l.split('.')[0]),#pull off the tld\
-				#'glassdoor':'https://www.glassdoor.com/Reviews/company-reviews.htm?suggestCount=0&suggestChosen=false&clickSource=searchBtn&typedKeyword=%s&sc.keyword=%s&locT=&locId=' % (l.split('.')[0],l.split('.')[0]),\
-				#'slideshare':'http://www.slideshare.net/%s' % (l.split('.')[0]),\
+				'glassdoor':'https://www.glassdoor.com/Reviews/company-reviews.htm?suggestCount=0&suggestChosen=false&clickSource=searchBtn&typedKeyword=%s&sc.keyword=%s&locT=&locId=' % (l.split('.')[0],l.split('.')[0]),\
+				'slideshare':'http://www.slideshare.net/%s' % (l.split('.')[0]),\
 				'virustotal':'https://www.virustotal.com/vtapi/v2/domain/report',\
 				'censys':'https://www.censys.io/api/v1'\
 				#'':''\
