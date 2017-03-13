@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 #By @arbitrary_code
+#https://github.com/bharshbarger/AutOSINT
 
 #Special thanks to:
 #@Beamr
