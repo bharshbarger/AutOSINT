@@ -1,6 +1,8 @@
 #!/usr/bin/env python
-
-import os
+try:
+	import os
+except ImportError as e:
+	raise ImportError('Error importing %s' % e)
 
 class Credleaks():
 
