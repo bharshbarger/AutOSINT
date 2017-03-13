@@ -231,38 +231,7 @@ def main():
 	write_report(args, reportDir, lookup, whoisResult, dnsResult, googleResult, shodanResult, pasteScrapeResult, harvesterResult, scrapeResult, credResult, pyfocaResult)
 
 
-#*******************************************************************************
-#ssl scan 
-#*******************************************************************************
-#censys
-#https://www.censys.io/ipv4?q=rapid7.com
-#rest api  https://www.censys.io/api/v1/
-#*******************************************************************************
-#https://dnsdumpster.com/
-#cool mapping of AS, etc
-#*******************************************************************************
-#passive dns
-
-#*******************************************************************************
-#viewdns.info
-#http://viewdns.info/api/
-#*******************************************************************************
-#he bgp info
-#http://bgp.he.net/dns/rapid7.com#_ipinfo
-#*******************************************************************************
-#active osint:
-#zone transfer host -a does this?
-#ike endpoints
-#http screnshots
-#*******************************************************************************
-#salesforce api
-#*******************************************************************************
-#recon-ng
-
-#*******************************************************************************
-
 		
-
 #*******************************************************************************
 def shodan_search(args, lookup, reportDir, apiKeyDir):
 	#probably need to customize search type based on -i or -d		
