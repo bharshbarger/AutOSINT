@@ -1,21 +1,14 @@
 #!/usr/bin/env python
 
-
 from google import search
 
-
-
 # this could be GREATLY improved. need to implement the custom search api
-# pass google dorks as args for now
 # GHDB password dorks https://www.exploit-db.com/google-hacking-database/9/
 # GHDB sensitive dirs https://www.exploit-db.com/google-hacking-database/3/
 # uses this awesome module https://pypi.python.org/pypi/google
-# requires beautifulsoup
-#https://stackoverflow.com/questions/4082966/what-are-the-alternatives-now-that-the-google-web-search-api-has-been-deprecated/11206266#11206266
-
+# https://stackoverflow.com/questions/4082966/what-are-the-alternatives-now-that-the-google-web-search-api-has-been-deprecated/11206266#11206266
 
 class Googledork():
-
 
 	def run(self, args, lookup, reportDir):
 		#need a default dork list
