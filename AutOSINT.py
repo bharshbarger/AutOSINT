@@ -22,7 +22,7 @@ try:
 	#AutOSINT module imports
 	from webscrape import Scraper
 	from whois import Whois
-	from dnsquery import Dnsquery
+	from mods.dnsquery import Dnsquery
 	from hibp import Haveibeenpwned
 	from googledork import Googledork
 	from shodansearch import Shodansearch
