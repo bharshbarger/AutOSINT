@@ -33,6 +33,8 @@ try:
 	from collections import Counter
 
 	from webscrape import Scraper
+	from whois import Whois
+	from dnsquery import Dnsquery
 
 except ImportError as e:
 	raise ImportError('Error importing %s' % e)
@@ -154,10 +156,6 @@ def main():
 		print '[+] Lookup Values: '+', '.join(lookup)
 
 
-
-
-
-
 	#init results lists
 	
 	whoisResult=[]
@@ -174,15 +172,24 @@ def main():
 
 	#call function if -w arg
 	if args.whois is True:
-		whoisResult = whois_search(args, lookup, reportDir)
+		
+		whoisSearch = Whois()
+		whoisSearch.run(args, lookup, reportDir)
+		#whoisResult = whois_search(args, lookup, reportDir)
+
+
+	#call function if -n arg
+	if args.nslookup is True:
+		
+		dnsQuery = Dnsquery()
+		dnsQuery.run(args, lookup, reportDir)
+		#dnsResult = dns_search(args, lookup, reportDir)
 
 	#call function if -b arg
 	if args.hibp is True:
 		hibpResult = hibp_search(args, lookup, reportDir)
 	
-	#call function if -n arg
-	if args.nslookup is True:
-		dnsResult = dns_search(args, lookup, reportDir)
+
 
 	#call function if -g arg
 	if args.googledork is not None:
@@ -205,16 +212,13 @@ def main():
 		credResult=credential_leaks(args, lookup, startTime, reportDir)
 	
 
-
-
 	#call function if -S arg
 	if args.scraper is True:
 		
 		web_scraper=Scraper()
-		#web_scraper.run()
 
 		scrapeResults = web_scraper.run(args, lookup, reportDir, apiKeyDir)
-		#scrapeResult=scrape_sites(args, lookup, reportDir, apiKeyDir)
+
 	#call function if -f arg
 	if args.foca is True:
 		pyfocaResult=pyfoca(args, lookup, reportDir)
@@ -284,72 +288,6 @@ def hibp_search(args, lookup, reportDir):
 #salesforce api
 #*******************************************************************************
 #recon-ng
-#
-
-#*******************************************************************************
-#queries whois of ip or domain set in lookup, dumps to stdout if -v is set, writes to txt file either way.
-#returns whoisResult for use in report
-'''def whois_search(args, lookup, reportDir):
-
-	whoisResult=[]
-
-	#iterate the index and values of the lookup list
-	for i, l in enumerate(lookup):
-		print '[+] Performing whois query ' + str(i + 1) + ' for ' + l
-		
-		whoisFile=open(reportDir+l+'/'+l+'_whois.txt','w')
-
-		#subprocess open the whois command for current value of "l" in lookup list. 
-		#split into newlines instead of commas
-		try:
-			whoisCmd = subprocess.Popen(['whois',l], stdout = subprocess.PIPE).communicate()[0].split('\n')
-		except:
-			print '[-] Error running whois command'
-			whoisResult.append('Error running whois command')
-			continue
-		#append lists together
-		whoisResult.append(whoisCmd)
-
-		#write the file
-		for r in whoisResult:
-			whoisFile.writelines('\n'.join(r))
-		
-		#verbosity logic
-		if args.verbose is True:
-			for w in whoisResult: print '\n'.join(w)
-
-	return whoisResult'''
-#*******************************************************************************
-#DNS query, dumps out a list
-#retruns dnsResult for use in report
-
-def dns_search(args, lookup, reportDir):
-	
-	dnsResult=[]
-
-	#iterate the index and values of the lookup list
-	for i, l in enumerate(lookup):
-		print '[+] Performing DNS query '+ str(i + 1) + ' using "host -a ' + l+'"'
-		dnsFile=open(reportDir+l+'/'+l+'_dns.txt','w')
-		#subprocess to run host -a on the current value of l in the loop, split into newlines
-		try:
-			dnsCmd = subprocess.Popen(['host', '-a', str(l)], stdout = subprocess.PIPE).communicate()[0].split('\n')
-		except:
-			print '[-] Error running dns query'
-			dnsResult.append('Error running DNS query')
-			continue
-		#append lists together
-		dnsResult.append(dnsCmd)
-
-		for r in dnsResult:
-			dnsFile.writelines('\n'.join(r))
-
-		#print dnsResult if -v
-		if args.verbose is True:
-			for d in dnsResult: print '\n'.join(d)
-
-	#return list object
-	return dnsResult
 
 #*******************************************************************************
 # this could be GREATLY improved. need to implement the custom search api
