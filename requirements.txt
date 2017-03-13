@@ -10,4 +10,4 @@
 python-docx
 shodan
 google
-pywhois
+#pywhois
