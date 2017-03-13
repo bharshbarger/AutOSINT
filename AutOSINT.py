@@ -25,7 +25,6 @@ try:
 
 	import re
 	import os
-	#from google import search
 	import json
 	import pprint
 	from lxml import html
@@ -41,12 +40,6 @@ try:
 except ImportError as e:
 	raise ImportError('Error importing %s' % e)
 	sys.exit(1)
-
-
-
-#python-docx: https://pypi.python.org/pypi/python-docx
-#shodan: https://github.com/achillean/shodan-python
-#google: https://pypi.python.org/pypi/google, also installs beautifulsoup
 
 #*******************************************************************************
 
@@ -82,7 +75,7 @@ def main():
  / ___ \ |_| | |_| |_| |___) | || |\  | | |  
 /_/   \_\__,_|\__|\___/|____/___|_| \_| |_|\n'''
 
-	if args.verbose is True:print 'AutOSINT.py v0.1, a way to do some automated OSINT tasks\n'
+	if args.verbose is True:print 'AutOSINT.py v0.2, a way to do some automated OSINT tasks\n'
 	if args.verbose is True:print args
 
 	#set True on action store_true args if -a
