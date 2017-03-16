@@ -32,8 +32,8 @@ try:
 	from pyfoca import Pyfoca
 	from reportgen import Reportgen
 
-except ImportError as e:
-	raise ImportError('Error importing %s' % e)
+except:
+	print('Error importing module(s)')
 	sys.exit(1)
 
 class Autosint:
@@ -41,7 +41,7 @@ class Autosint:
 	def __init__(self, args):
 
 		#version
-		self.version = '0.2'
+		self.version = 'v2.03.06.17'
 
 		#container for lookup values (domain or ip(ip not working rn))
 		self.lookup = []
