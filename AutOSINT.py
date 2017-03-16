@@ -10,7 +10,7 @@
 
 try:
 
-	import argparse, time, os
+	import argparse, time, os, sys
 
 	'''import sys
 	import urllib
@@ -34,7 +34,7 @@ try:
 
 except:
 	print('Error importing module(s)')
-	sys.exit(1)
+
 
 class Autosint:
 
