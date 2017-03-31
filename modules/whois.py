@@ -25,8 +25,11 @@ class Whois():
 				print '[-] Error running whois command'
 				whoisResult.append('Error running whois command')
 				continue
-			#append lists together
-			whoisResult.append(whoisCmd)
+
+			#filter on colon to remove boilerplace. sketchy but an improvement
+			for line in whoisCmd:
+				if ':' in line:
+					whoisResult.append(line)
 
 			#write the file
 			for r in whoisResult:
@@ -34,6 +37,6 @@ class Whois():
 			
 			#verbosity logic
 			if args.verbose is True:
-				for w in whoisResult: print '\n'.join(w)
+				for w in whoisResult: print ''.join(w)
 
 		return whoisResult
