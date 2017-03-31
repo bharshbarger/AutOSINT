@@ -27,21 +27,18 @@ class Database():
 				Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 				UNIQUE(name))''')
 
-			c.execute('''CREATE TABLE nmap(
-				ID INTEGER PRIMARY KEY, 
-				ip text, 
-				port text, 
-				protcol text, 
-				state text,
-				client_id integer, 
-				FOREIGN KEY(client_id) REFERENCES client(ID))''')
-			
-			
+
 			c.execute('''CREATE TABLE domains(
 				ID INTEGER PRIMARY KEY, 
 				name text, 
 				client_id integer, 
 				FOREIGN KEY(client_id) REFERENCES client(ID))''')
+
+			c.execute('''CREATE TABLE whois(
+				ID INTEGER PRIMARY KEY,
+				contact text,
+				client_id integer,
+				FOREIGN KEY(client_id) REFERENCES client(ID)''')
 
 
 
