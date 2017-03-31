@@ -11,7 +11,7 @@
 #try:
 
 #builtins
-import argparse, time, os, sys
+import argparse, time, os, sys, re
 
 #AutOSINT module imports
 from modules.whois import Whois
@@ -82,7 +82,6 @@ class Autosint:
 
 		#resource assign
 		self.reportGen=Reportgen()
-		self.databaseCommands=DatabaseCommands(self.clientName)
 		self.setupDatabase=SetupDatabase()
 
 	
@@ -180,10 +179,19 @@ class Autosint:
 		if self.args.verbose is True:
 			print '[+] Lookup Values: '+', '.join(self.lookupList)
 
+		#check for a supplied client name and exit if none provided
+		if self.args.client is None:
+			print('\n[!] Client name required, please provide with -C <Clientname>\n')
+			sys.exit(0)
+		else:
+			#strip out specials in client name
+			self.clientName = re.sub('\W+',' ', self.args.client)
+
 
 		#check for database, create if missing
 		if not os.path.exists(self.autOsintDB):
 			print('\n[!] Database missing, creating %s \n' % self.autOsintDB)
+			self.databaseCommands=DatabaseCommands(self.clientName)
 			self.setupDatabase.createdatabase()
 
 	def runQueries(self):
@@ -242,6 +250,7 @@ def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-a', '--all', help = 'run All queries', action = 'store_true')
 	parser.add_argument('-b', '--hibp', help='Search haveibeenpwned.com for breaches related to a domain', action='store_true')
+	parser.add_argument('-C', '--client', help='Supply the client full name, i.e. foo.com would map to Foocorp')
 	parser.add_argument('-c', '--creds', help = 'Search local copies of credential dumps', action = 'store_true')
 	parser.add_argument('-d', '--domain', metavar='foo.com', nargs = 1, help = 'the Domain you want to search.')
 	parser.add_argument('-f', '--foca', help = 'invoke pyfoca', action = 'store_true')
