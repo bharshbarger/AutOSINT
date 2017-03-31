@@ -10,30 +10,24 @@
 
 try:
 
+	#builtins
 	import argparse, time, os, sys
 
-	'''import sys
-	import urllib
-	import urllib2
-	import re
-	from lxml import html
-	from collections import Counter'''
-
 	#AutOSINT module imports
-	from webscrape import Scraper
-	from whois import Whois
-	from dnsquery import Dnsquery
-	from hibp import Haveibeenpwned
-	from googledork import Googledork
-	from shodansearch import Shodansearch
-	from pastebinscrape import Pastebinscrape
-	from theharvester import Theharvester
-	from credleaks import Credleaks
-	from pyfoca import Pyfoca
-	from reportgen import Reportgen
+	from modules.whois import Whois
+	from modules.dnsquery import Dnsquery
+	from modules.hibp import Haveibeenpwned
+	from modules.googledork import Googledork
+	from modules.shodansearch import Shodansearch
+	from modules.pastebinscrape import Pastebinscrape
+	from modules.theharvester import Theharvester
+	from modules.credleaks import Credleaks
+	from modules.pyfoca import Pyfoca
+	from modules.reportgen import Reportgen
+	from modules.webscrape import Scraper
 
-except:
-	print('Error importing module(s)')
+except ImportError as e:
+	print('Error importing module(s) %s' % e)
 
 
 class Autosint:
@@ -41,7 +35,7 @@ class Autosint:
 	def __init__(self, args):
 
 		#version
-		self.version = 'v2.03.06.17'
+		self.version = 'v2.03.30.17'
 
 		#container for lookup values (domain or ip(ip not working rn))
 		self.lookup = []
@@ -66,8 +60,6 @@ class Autosint:
 		self.reportDir='./reports/'
 		self.apiKeyDir='./api_keys/'
 
-
-		
 		#check local dirs
 		if not os.path.exists(self.reportDir):
 			os.makedirs(self.reportDir)
@@ -126,7 +118,7 @@ class Autosint:
 
 		#require at least one argument
 		if not (args.domain or args.ipaddress):
-		    parser.error('[-] No OSINT reference provided, add domain(s) with -d or IP address(es) with -i\n')
+		    print('[-] No OSINT reference provided, add domain(s) with -d or IP address(es) with -i\n')
 		    sys.exit()
 
 		#if no queries defined, exit. -a sets all so we're good there
@@ -161,11 +153,14 @@ class Autosint:
 		if args.verbose is True:
 			print '[+] Lookup Values: '+', '.join(self.lookup)
 
-
+	def runQueries(self, args):
 		#call function if -w arg
 		if args.whois is True:
-			whoisSearch = Whois()
-			self.whoisResult = whoisSearch.run(args, self.lookup, self.reportDir)
+
+			whoisQuery = Whois()
+		
+			
+			self.whoisResult = whoisQuery.run(args, self.lookup, self.reportDir)
 
 		#call function if -n arg
 		if args.nslookup is True:
@@ -216,6 +211,7 @@ class Autosint:
 		if args.foca is True:
 			pyFoca = Pyfoca()
 			self.pyfocaResult = pyFoca.run(args, self.lookup, self.reportDir)
+			
 
 	#run the docx report. text files happen in the respective functions
 	def report(self, args):
@@ -251,8 +247,8 @@ def main():
 	runAutosint.clear()
 	runAutosint.banner(args)
 	runAutosint.checkargs(args)
+	runAutosint.runQueries(args)
 	runAutosint.report(args)
 	
 if __name__ == '__main__':
-
     main()
