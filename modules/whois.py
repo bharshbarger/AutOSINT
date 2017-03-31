@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
+
 import subprocess
 
-class Whois:
+class Whois():
+
 
 	def run(self, args, lookup, reportDir):
 
@@ -35,14 +37,3 @@ class Whois:
 				for w in whoisResult: print '\n'.join(w)
 
 		return whoisResult
-
-
-
-def main():
-	runWhois=Whois()
-	runWhois.run()
-
-
-if __name__ == '__main__':
-
-    main()
