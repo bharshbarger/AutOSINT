@@ -67,7 +67,18 @@ class Autosint:
 		self.apiKeyDir='./api_keys/'
 		self.dbDir='./resources/'
 
+		#module assign
+		self.credLeaks = Credleaks()
 		self.reportGen=Reportgen()
+		self.pyFoca = Pyfoca()
+		self.web_scraper = Scraper()
+		self.theHarvester = Theharvester()
+		self.dnsQuery = Dnsquery()
+		self.pastebinScrape = Pastebinscrape()
+		self.shodanSearch = Shodansearch()
+		self.googleDork = Googledork()
+		self.hibpSearch = Haveibeenpwned()
+		self.whoisQuery = Whois()
 
 
 	
@@ -171,61 +182,44 @@ class Autosint:
 	def runQueries(self):
 		#call function if -w arg
 		if self.args.whois is True:
-
-			whoisQuery = Whois()
-		
-			
-			self.whoisResult = whoisQuery.run(self.args, self.lookup, self.reportDir)
+			self.whoisResult = self.whoisQuery.run(self.args, self.lookup, self.reportDir)
 
 		#call function if -n arg
 		if self.args.nslookup is True:
-			dnsQuery = Dnsquery()
-			self.dnsResult = dnsQuery.run(self.args, self.lookup, self.reportDir)
+			self.dnsResult = self.dnsQuery.run(self.args, self.lookup, self.reportDir)
 
 		#call function if -b arg
 		if self.args.hibp is True:
-			hibpSearch = Haveibeenpwned()
-			self.hibpResult = hibpSearch.run(self.args, self.lookup, self.reportDir)
+			self.hibpResult = self.hibpSearch.run(self.args, self.lookup, self.reportDir)
 
 		#call function if -g arg
 		if self.args.googledork is not None:
-			
-			googleDork = Googledork()
-
-			self.googleResult = googleDork.run(self.args, self.lookup, self.reportDir)
+			self.googleResult = self.googleDork.run(self.args, self.lookup, self.reportDir)
 
 		#call function if -s arg
 		if self.args.shodan is True:
-			
-			shodanSearch = Shodansearch()
-
-			self.shodanResult = shodanSearch.run(self.args, self.lookup, self.reportDir, self.apiKeyDir)
+			self.shodanResult = self.shodanSearch.run(self.args, self.lookup, self.reportDir, self.apiKeyDir)
 
 		#call function if -p arg
 		if self.args.pastebinsearch is not None:
-			pastebinScrape = Pastebinscrape()
-			self.pasteScrapeResult = pastebinScrape.run(self.args, self.lookup, self.reportDir, self.apiKeyDir)
+			self.pasteScrapeResult = self.pastebinScrape.run(self.args, self.lookup, self.reportDir, self.apiKeyDir)
 
 		# call function if -t arg
 		if self.args.theharvester is True:
-			theHarvester = Theharvester()
-			self.harvesterResult = theHarvester.run(self.args, self.lookup, self.reportDir)
+			self.harvesterResult = self.theHarvester.run(self.args, self.lookup, self.reportDir)
 
 		#call function if -c arg 
 		if self.args.creds is True:
-			credLeaks = Credleaks()
-			self.credResult = credLeaks.run(self.args, self.lookup, self.startTime, self.reportDir)
+			self.credResult = self.credLeaks.run(self.args, self.lookup, self.startTime, self.reportDir)
 
 
 			#call function if -S arg
 		if self.args.scraper is True:
-			web_scraper = Scraper()
-			self.scrapeResult = self.scrapeResults = web_scraper.run(self.args, self.lookup, self.reportDir, self.apiKeyDir)
+			self.scrapeResult = self.web_scraper.run(self.args, self.lookup, self.reportDir, self.apiKeyDir)
 
 		#call function if -f arg
 		if self.args.foca is True:
-			pyFoca = Pyfoca()
-			self.pyfocaResult = pyFoca.run(self.args, self.lookup, self.reportDir)
+			self.pyfocaResult = self.pyFoca.run(self.args, self.lookup, self.reportDir)
 			
 
 	#run the docx report. text files happen in the respective functions
