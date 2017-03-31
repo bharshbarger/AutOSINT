@@ -11,7 +11,7 @@
 #try:
 
 #builtins
-import argparse, time, os, sys
+import argparse, time, os, sys, re
 
 #AutOSINT module imports
 from modules.whois import Whois
@@ -26,7 +26,8 @@ from modules.pyfoca import Pyfoca
 from modules.webscrape import Scraper
 
 from resources.reportgen import Reportgen
-from resources.dbcommands import Database
+from resources.dbcommands import DatabaseCommands
+from resources.setupDB import SetupDatabase
 
 #except ImportError as e:
 	#print('Error importing module(s) %s' % e)
@@ -39,8 +40,13 @@ class Autosint:
 		#version
 		self.version = 'v2.03.31.17'
 
-		#container for lookup values (domain or ip(ip not working rn))
-		self.lookup = []
+		#defaults
+		self.lookupList = []
+		self.clientName = None
+		self.autOsintDB = 'AutOSINT.db'
+		self.reportDir='./reports/'
+		self.apiKeyDir='./api_keys/'
+
 
 		#import args and parser objects from argparse
 		self.args = args
@@ -62,13 +68,21 @@ class Autosint:
 		#start timer
 		self.startTime=time.time()
 
-		#local dirs
-		self.reportDir='./reports/'
-		self.apiKeyDir='./api_keys/'
-		self.dbDir='./resources/'
+		#module assign
+		self.credLeaks = Credleaks()
+		self.pyFoca = Pyfoca()
+		self.web_scraper = Scraper()
+		self.theHarvester = Theharvester()
+		self.dnsQuery = Dnsquery()
+		self.pastebinScrape = Pastebinscrape()
+		self.shodanSearch = Shodansearch()
+		self.googleDork = Googledork()
+		self.hibpSearch = Haveibeenpwned()
+		self.whoisQuery = Whois()
 
+		#resource assign
 		self.reportGen=Reportgen()
-
+		self.setupDatabase=SetupDatabase()
 
 	
 	def clear(self):
@@ -99,9 +113,6 @@ class Autosint:
 
 		if not os.path.exists(self.apiKeyDir):
 			os.makedirs(self.apiKeyDir)
-
-		if not os.path.exists(self.dbDir):
-			os.makedirs(self.dbDir)
 
 		#set True on action store_true args if -a
 		if self.args.all is True:
@@ -153,85 +164,83 @@ class Autosint:
 		#check to see if an ip or domain name was entered
 		if self.args.domain is not None:
 			for d in self.args.domain:
-				self.lookup = self.args.domain
-				for l in self.lookup:
+				self.lookupList = self.args.domain
+				for l in self.lookupList:
 					if not os.path.exists(self.reportDir+'/'+l):
 						os.makedirs(self.reportDir+'/'+l)
 					
 		else:
 			for i in self.args.ipaddress:
-				self.lookup = self.args.ipaddress
-				for l in self.lookup:
+				self.lookupList = self.args.ipaddress
+				for l in self.lookupList:
 					if not os.path.exists(self.reportDir+'/'+l):
 						os.makedirs(self.reportDir+'/'+l)
 
 		if self.args.verbose is True:
-			print '[+] Lookup Values: '+', '.join(self.lookup)
+			print '[+] Lookup Values: '+', '.join(self.lookupList)
+
+		#check for a supplied client name and exit if none provided
+		if self.args.client is None:
+			print('\n[!] Client name required, please provide with -C <Clientname>\n')
+			sys.exit(0)
+		else:
+			#strip out specials in client name
+			self.clientName = re.sub('\W+',' ', self.args.client)
+
+
+		#check for database, create if missing
+		if not os.path.exists(self.autOsintDB):
+			print('\n[!] Database missing, creating %s \n' % self.autOsintDB)
+			self.databaseCommands=DatabaseCommands(self.clientName)
+			self.setupDatabase.createdatabase()
 
 	def runQueries(self):
 		#call function if -w arg
 		if self.args.whois is True:
-
-			whoisQuery = Whois()
-		
-			
-			self.whoisResult = whoisQuery.run(self.args, self.lookup, self.reportDir)
+			self.whoisResult = self.whoisQuery.run(self.args, self.lookupList, self.reportDir)
 
 		#call function if -n arg
 		if self.args.nslookup is True:
-			dnsQuery = Dnsquery()
-			self.dnsResult = dnsQuery.run(self.args, self.lookup, self.reportDir)
+			self.dnsResult = self.dnsQuery.run(self.args, self.lookupList, self.reportDir)
 
 		#call function if -b arg
 		if self.args.hibp is True:
-			hibpSearch = Haveibeenpwned()
-			self.hibpResult = hibpSearch.run(self.args, self.lookup, self.reportDir)
+			self.hibpResult = self.hibpSearch.run(self.args, self.lookupList, self.reportDir)
 
 		#call function if -g arg
 		if self.args.googledork is not None:
-			
-			googleDork = Googledork()
-
-			self.googleResult = googleDork.run(self.args, self.lookup, self.reportDir)
+			self.googleResult = self.googleDork.run(self.args, self.lookupList, self.reportDir)
 
 		#call function if -s arg
 		if self.args.shodan is True:
-			
-			shodanSearch = Shodansearch()
-
-			self.shodanResult = shodanSearch.run(self.args, self.lookup, self.reportDir, self.apiKeyDir)
+			self.shodanResult = self.shodanSearch.run(self.args, self.lookupList, self.reportDir, self.apiKeyDir)
 
 		#call function if -p arg
 		if self.args.pastebinsearch is not None:
-			pastebinScrape = Pastebinscrape()
-			self.pasteScrapeResult = pastebinScrape.run(self.args, self.lookup, self.reportDir, self.apiKeyDir)
+			self.pasteScrapeResult = self.pastebinScrape.run(self.args, self.lookupList, self.reportDir, self.apiKeyDir)
 
 		# call function if -t arg
 		if self.args.theharvester is True:
-			theHarvester = Theharvester()
-			self.harvesterResult = theHarvester.run(self.args, self.lookup, self.reportDir)
+			self.harvesterResult = self.theHarvester.run(self.args, self.lookupList, self.reportDir)
 
 		#call function if -c arg 
 		if self.args.creds is True:
-			credLeaks = Credleaks()
-			self.credResult = credLeaks.run(self.args, self.lookup, self.startTime, self.reportDir)
+			self.credResult = self.credLeaks.run(self.args, self.lookupList, self.startTime, self.reportDir)
 
 
 			#call function if -S arg
 		if self.args.scraper is True:
-			web_scraper = Scraper()
-			self.scrapeResult = self.scrapeResults = web_scraper.run(self.args, self.lookup, self.reportDir, self.apiKeyDir)
+			self.scrapeResult = self.web_scraper.run(self.args, self.lookupList, self.reportDir, self.apiKeyDir)
 
 		#call function if -f arg
 		if self.args.foca is True:
-			pyFoca = Pyfoca()
-			self.pyfocaResult = pyFoca.run(self.args, self.lookup, self.reportDir)
+			self.pyfocaResult = self.pyFoca.run(self.args, self.lookupList, self.reportDir)
 			
 
 	#run the docx report. text files happen in the respective functions
 	def report(self):
 		
-		self.reportGen.run(self.args, self.reportDir, self.lookup, self.whoisResult, self.dnsResult, self.googleResult, self.shodanResult, self.pasteScrapeResult, self.harvesterResult, self.scrapeResult, self.credResult, self.pyfocaResult)
+		self.reportGen.run(self.args, self.reportDir, self.lookupList, self.whoisResult, self.dnsResult, self.googleResult, self.shodanResult, self.pasteScrapeResult, self.harvesterResult, self.scrapeResult, self.credResult, self.pyfocaResult)
 
 def main():
 
@@ -241,6 +250,7 @@ def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-a', '--all', help = 'run All queries', action = 'store_true')
 	parser.add_argument('-b', '--hibp', help='Search haveibeenpwned.com for breaches related to a domain', action='store_true')
+	parser.add_argument('-C', '--client', help='Supply the client full name, i.e. foo.com would map to Foocorp')
 	parser.add_argument('-c', '--creds', help = 'Search local copies of credential dumps', action = 'store_true')
 	parser.add_argument('-d', '--domain', metavar='foo.com', nargs = 1, help = 'the Domain you want to search.')
 	parser.add_argument('-f', '--foca', help = 'invoke pyfoca', action = 'store_true')

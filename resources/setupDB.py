@@ -5,18 +5,18 @@ try:
 except ImportError as e:
 	raise ImportError('Error importing %s' % e)
 
-class Database():
+class SetupDatabase():
 	def __init__(self):
 		
 		#vars
-		self.autOsintDB = 'AutOSINT.db'
+		self.autOSINTDB = 'AutOSINT.db'
 
 	def createdatabase(self):
 
 		# Database Connection
 
 		try:
-			connection = sqlite3.connect(self.autOsintDB)
+			connection = sqlite3.connect(self.autOSINTDB)
 			c = connection.cursor()
 
 			#Create table

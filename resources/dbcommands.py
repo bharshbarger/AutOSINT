@@ -4,7 +4,7 @@
 import sqlite3
 
 
-class Database:
+class DatabaseCommands:
 
 	def __init__(self, clientName):
 
