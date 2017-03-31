@@ -43,7 +43,7 @@ class Autosint:
 		#defaults
 		self.lookupList = []
 		self.clientName = None
-		self.autOsintDB = 'AutoExt.db'
+		self.autOsintDB = 'AutOSINT.db'
 		self.reportDir='./reports/'
 		self.apiKeyDir='./api_keys/'
 
