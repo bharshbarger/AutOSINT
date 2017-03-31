@@ -153,14 +153,14 @@ class Autosint:
 		if args.verbose is True:
 			print '[+] Lookup Values: '+', '.join(self.lookup)
 
-	def runQueries(self, args, runWhois):
+	def runQueries(self, args):
 		#call function if -w arg
 		if args.whois is True:
 
+			whoisQuery = Whois()
+		
 			
-			query(args, self.lookup, self.reportDir)
-			
-			#self.whoisResult = self.whoisSearch.run(args, self.lookup, self.reportDir)
+			self.whoisResult = whoisQuery.run(args, self.lookup, self.reportDir)
 
 		#call function if -n arg
 		if args.nslookup is True:
@@ -247,9 +247,8 @@ def main():
 	runAutosint.clear()
 	runAutosint.banner(args)
 	runAutosint.checkargs(args)
-	runAutosint.runQueries(args, runWhois)
+	runAutosint.runQueries(args)
 	runAutosint.report(args)
 	
 if __name__ == '__main__':
-
     main()
