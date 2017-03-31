@@ -26,7 +26,7 @@ from modules.pyfoca import Pyfoca
 from modules.webscrape import Scraper
 
 from resources.reportgen import Reportgen
-from resources.database import Database
+from resources.dbcommands import Database
 
 #except ImportError as e:
 	#print('Error importing module(s) %s' % e)
@@ -66,6 +66,8 @@ class Autosint:
 		self.reportDir='./reports/'
 		self.apiKeyDir='./api_keys/'
 		self.dbDir='./resources/'
+
+		self.reportGen=Reportgen()
 
 
 	
@@ -229,7 +231,6 @@ class Autosint:
 	#run the docx report. text files happen in the respective functions
 	def report(self):
 		
-		self.reportGen = reportGen()
 		self.reportGen.run(self.args, self.reportDir, self.lookup, self.whoisResult, self.dnsResult, self.googleResult, self.shodanResult, self.pasteScrapeResult, self.harvesterResult, self.scrapeResult, self.credResult, self.pyfocaResult)
 
 def main():
