@@ -4,7 +4,7 @@ import subprocess
 
 class Whois:
 
-	def query(self, args, lookup, reportDir):
+	def run(self, args, lookup, reportDir):
 
 
 		whoisResult=[]
@@ -40,7 +40,7 @@ class Whois:
 
 def main():
 	runWhois=Whois()
-	runWhois.query()
+	runWhois.run()
 
 
 if __name__ == '__main__':
