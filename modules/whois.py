@@ -4,16 +4,13 @@
 import subprocess
 
 class Whois():
-
-
 	def run(self, args, lookup, reportDir):
-
 
 		whoisResult=[]
 
 		#iterate the index and values of the lookup list
 		for i, l in enumerate(lookup):
-			print '[+] Performing whois query ' + str(i + 1) + ' for ' + l
+			print ('[+] Performing whois query %s for %s' % (str(i + 1), l))
 			
 			whoisFile=open(reportDir+l+'/'+l+'_whois.txt','w')
 
@@ -22,7 +19,7 @@ class Whois():
 			try:
 				whoisCmd = subprocess.Popen(['whois',l], stdout = subprocess.PIPE).communicate()[0].split('\n')
 			except:
-				print '[-] Error running whois command'
+				print('[-] Error running whois command')
 				whoisResult.append('Error running whois command')
 				continue
 
@@ -37,6 +34,6 @@ class Whois():
 			
 			#verbosity logic
 			if args.verbose is True:
-				for w in whoisResult: print ''.join(w)
+				for w in whoisResult: print (''.join(w))
 
 		return whoisResult
