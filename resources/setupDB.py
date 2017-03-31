@@ -23,16 +23,9 @@ class Database():
 			c.execute('''CREATE TABLE client(
 				ID INTEGER PRIMARY KEY,
 				name text, 
-				contact text, 
+				domain text, 
 				Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 				UNIQUE(name))''')
-
-
-			c.execute('''CREATE TABLE domains(
-				ID INTEGER PRIMARY KEY, 
-				name text, 
-				client_id integer, 
-				FOREIGN KEY(client_id) REFERENCES client(ID))''')
 
 			c.execute('''CREATE TABLE whois(
 				ID INTEGER PRIMARY KEY,
