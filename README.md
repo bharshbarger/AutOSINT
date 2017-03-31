@@ -6,7 +6,7 @@ Tool to automate common osint tasks. Probably best run on Kali, but tested on De
 ### In your path: 
 whois, host, git, theHarvester(https://github.com/laramies/theHarvester), pyFoca(https://github.com/altjx/ipwn)
 
-###python modules: 
+### python modules: 
 python-docx, shodan,  google 
 
 ### other files:
