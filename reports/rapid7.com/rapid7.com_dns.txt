@@ -1,0 +1,25 @@
+Trying "rapid7.com"
+;; Truncated, retrying in TCP mode.
+Trying "rapid7.com"
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 17142
+;; flags: qr rd ra; QUERY: 1, ANSWER: 13, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;rapid7.com.			IN	ANY
+
+;; ANSWER SECTION:
+rapid7.com.		59	IN	A	52.84.57.36
+rapid7.com.		899	IN	NS	ns-1390.awsdns-45.org.
+rapid7.com.		899	IN	NS	ns-1653.awsdns-14.co.uk.
+rapid7.com.		899	IN	NS	ns-439.awsdns-54.com.
+rapid7.com.		899	IN	NS	ns-739.awsdns-28.net.
+rapid7.com.		899	IN	SOA	ns-1653.awsdns-14.co.uk. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400
+rapid7.com.		299	IN	MX	0 rapid7-com.mail.protection.outlook.com.
+rapid7.com.		59	IN	TXT	"Ha0t0ULKa+E7VLp3KRbhs9smPuzCthPpirN0eMsFBUwGhzSnKIEgNc7sqF5WT9LDZQgaf/4xgX5pFTKNETxbew=="
+rapid7.com.		59	IN	TXT	"MS=ms93061892"
+rapid7.com.		59	IN	TXT	"atlassian-domain-verification=+Mx+hFjC77glTvA7K9Tp/5x7LvbyawRYOeZpkXhE/Xys/xciI66aaIgyQQAD88E7"
+rapid7.com.		59	IN	TXT	"citrix-verification-code=3d0b3642-a1b3-4cf3-8616-c9fb8cd0c2da"
+rapid7.com.		59	IN	TXT	"smartsheet-site-validation.rapid7.com TXT wfJFw8OnJ0WwBCBDP7NuqHHZfZhanWVlikqsWO4VvHOr9QZ0RVR4YnP8dEJ8RoagWSUcN+C5tFWNRq0vvwYUMw=="
+rapid7.com.		59	IN	TXT	"v=spf1 ip4:208.118.237.0/24 ip4:208.118.227.0/25 ip4:64.125.235.5 ip4:64.125.235.6 ip4:205.201.137.229 ip4:209.177.165.0/24 ip4:209.177.171.0/24 ip4:209.177.164.0/24 include:_spf.salesforce.com include:mktomail.com include:spf.protection.outlook.com -all"
+
+Received 1011 bytes from 8.8.8.8#53 in 69 ms

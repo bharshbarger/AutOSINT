@@ -8,37 +8,43 @@
 #@tatanus
 #unum alces!
 
-try:
+#try:
 
-	#builtins
-	import argparse, time, os, sys
+#builtins
+import argparse, time, os, sys
 
-	#AutOSINT module imports
-	from modules.whois import Whois
-	from modules.dnsquery import Dnsquery
-	from modules.hibp import Haveibeenpwned
-	from modules.googledork import Googledork
-	from modules.shodansearch import Shodansearch
-	from modules.pastebinscrape import Pastebinscrape
-	from modules.theharvester import Theharvester
-	from modules.credleaks import Credleaks
-	from modules.pyfoca import Pyfoca
-	from modules.reportgen import Reportgen
-	from modules.webscrape import Scraper
+#AutOSINT module imports
+from modules.whois import Whois
+from modules.dnsquery import Dnsquery
+from modules.hibp import Haveibeenpwned
+from modules.googledork import Googledork
+from modules.shodansearch import Shodansearch
+from modules.pastebinscrape import Pastebinscrape
+from modules.theharvester import Theharvester
+from modules.credleaks import Credleaks
+from modules.pyfoca import Pyfoca
+from modules.webscrape import Scraper
 
-except ImportError as e:
-	print('Error importing module(s) %s' % e)
+from resources.reportgen import Reportgen
+from resources.database import Database
+
+#except ImportError as e:
+	#print('Error importing module(s) %s' % e)
 
 
 class Autosint:
 
-	def __init__(self, args):
+	def __init__(self, args, parser):
 
 		#version
-		self.version = 'v2.03.30.17'
+		self.version = 'v2.03.31.17'
 
 		#container for lookup values (domain or ip(ip not working rn))
 		self.lookup = []
+
+		#import args and parser objects from argparse
+		self.args = args
+		self.parser = parser
 
 		#module results lists
 		self.whoisResult = []
@@ -59,13 +65,9 @@ class Autosint:
 		#local dirs
 		self.reportDir='./reports/'
 		self.apiKeyDir='./api_keys/'
+		self.dbDir='./resources/'
 
-		#check local dirs
-		if not os.path.exists(self.reportDir):
-			os.makedirs(self.reportDir)
 
-		if not os.path.exists(self.apiKeyDir):
-			os.makedirs(self.apiKeyDir)
 	
 	def clear(self):
 
@@ -73,43 +75,54 @@ class Autosint:
 	    os.system('cls' if os.name == 'nt' else 'clear')
 
 
-	def banner(self, args):
+	def banner(self):
 			
 		#verbosity flag to print logo and args
-		if args.verbose is True:print '''
-	    _         _    ___  ____ ___ _   _ _____ 
-	   / \  _   _| |_ / _ \/ ___|_ _| \ | |_   _|
-	  / _ \| | | | __| | | \___ \| ||  \| | | |  
-	 / ___ \ |_| | |_| |_| |___) | || |\  | | |  
-	/_/   \_\__,_|\__|\___/|____/___|_| \_| |_|\n'''
+		if self.args.verbose is True:print( '''
+			    _         _    ___  ____ ___ _   _ _____ 
+			   / \  _   _| |_ / _ \/ ___|_ _| \ | |_   _|
+			  / _ \| | | | __| | | \___ \| ||  \| | | |  
+			 / ___ \ |_| | |_| |_| |___) | || |\  | | |  
+			/_/   \_\__,_|\__|\___/|____/___|_| \_| |_|\n''')
 
-		if args.verbose is True:print 'AutOSINT.py %s, a way to do some automated OSINT tasks\n' % self.version
-		if args.verbose is True:print args
+		if self.args.verbose is True:print('AutOSINT.py %s, a way to do some automated OSINT tasks\n' % self.version)
+		if self.args.verbose is True:print(self.args)
 
 	
-	def checkargs(self, args):
+	def checkargs(self):
+
+		#check local dirs for reports, apikey and database
+		if not os.path.exists(self.reportDir):
+			os.makedirs(self.reportDir)
+
+		if not os.path.exists(self.apiKeyDir):
+			os.makedirs(self.apiKeyDir)
+
+		if not os.path.exists(self.dbDir):
+			os.makedirs(self.dbDir)
+
 		#set True on action store_true args if -a
-		if args.all is True:
-			args.creds = True
-			args.hibp = True
-			args.foca = True
-			args.nslookup = True
-			args.theharvester = True
-			args.whois = True
-			args.scraper = True
-			args.shodan = True
-			if args.googledork is None:
-				print '[-] You need to provide arguments for google dorking. e.g -g inurl:apsx'
-				sys.exit()
-			if args.pastebinsearch is None:
-				print '[-] You need to provide arguments for pastebin keywords. e.g -p password id_rsa'
-				sys.exit()
+		if self.args.all is True:
+			self.args.creds = True
+			self.args.hibp = True
+			self.args.foca = True
+			self.args.nslookup = True
+			self.args.theharvester = True
+			self.args.whois = True
+			self.args.scraper = True
+			self.args.shodan = True
+			if self.args.googledork is None:
+				print ('[-] You need to provide arguments for google dorking. e.g -g inurl:apsx')
+				sys.exit(0)
+			if self.args.pastebinsearch is None:
+				print ('[-] You need to provide arguments for pastebin keywords. e.g -p password id_rsa')
+				sys.exit(0)
 
 			
 
 		#validate entered IP address? do we even care about IP address? i and d do the same shit
-		if args.ipaddress is not None:
-			for a in args.ipaddress:
+		if self.args.ipaddress is not None:
+			for a in self.args.ipaddress:
 				try:
 					socket.inet_aton(a)
 				except socket.error:
@@ -117,107 +130,107 @@ class Autosint:
 					sys.exit()
 
 		#require at least one argument
-		if not (args.domain or args.ipaddress):
+		if not (self.args.domain or self.args.ipaddress):
 		    print('[-] No OSINT reference provided, add domain(s) with -d or IP address(es) with -i\n')
 		    sys.exit()
 
 		#if no queries defined, exit. -a sets all so we're good there
-		if (args.whois is False and \
-			args.hibp is False and \
-			args.nslookup is False and \
-			args.googledork is None and \
-			args.shodan is False and \
-			args.creds is False and \
-			args.theharvester is False and \
-			args.scraper is False and \
-			args.pastebinsearch is None and \
-			args.foca is False):
+		if (self.args.whois is False and \
+			self.args.hibp is False and \
+			self.args.nslookup is False and \
+			self.args.googledork is None and \
+			self.args.shodan is False and \
+			self.args.creds is False and \
+			self.args.theharvester is False and \
+			self.args.scraper is False and \
+			self.args.pastebinsearch is None and \
+			self.args.foca is False):
 			print '[-] No options specified, use -h or --help for a list'
 			sys.exit()
 
 		#check to see if an ip or domain name was entered
-		if args.domain is not None:
-			for d in args.domain:
-				self.lookup = args.domain
+		if self.args.domain is not None:
+			for d in self.args.domain:
+				self.lookup = self.args.domain
 				for l in self.lookup:
 					if not os.path.exists(self.reportDir+'/'+l):
 						os.makedirs(self.reportDir+'/'+l)
 					
 		else:
-			for i in args.ipaddress:
-				self.lookup = args.ipaddress
+			for i in self.args.ipaddress:
+				self.lookup = self.args.ipaddress
 				for l in self.lookup:
 					if not os.path.exists(self.reportDir+'/'+l):
 						os.makedirs(self.reportDir+'/'+l)
 
-		if args.verbose is True:
+		if self.args.verbose is True:
 			print '[+] Lookup Values: '+', '.join(self.lookup)
 
-	def runQueries(self, args):
+	def runQueries(self):
 		#call function if -w arg
-		if args.whois is True:
+		if self.args.whois is True:
 
 			whoisQuery = Whois()
 		
 			
-			self.whoisResult = whoisQuery.run(args, self.lookup, self.reportDir)
+			self.whoisResult = whoisQuery.run(self.args, self.lookup, self.reportDir)
 
 		#call function if -n arg
-		if args.nslookup is True:
+		if self.args.nslookup is True:
 			dnsQuery = Dnsquery()
-			self.dnsResult = dnsQuery.run(args, self.lookup, self.reportDir)
+			self.dnsResult = dnsQuery.run(self.args, self.lookup, self.reportDir)
 
 		#call function if -b arg
-		if args.hibp is True:
+		if self.args.hibp is True:
 			hibpSearch = Haveibeenpwned()
-			self.hibpResult = hibpSearch.run(args, self.lookup, self.reportDir)
+			self.hibpResult = hibpSearch.run(self.args, self.lookup, self.reportDir)
 
 		#call function if -g arg
-		if args.googledork is not None:
+		if self.args.googledork is not None:
 			
 			googleDork = Googledork()
 
-			self.googleResult = googleDork.run(args, self.lookup, self.reportDir)
+			self.googleResult = googleDork.run(self.args, self.lookup, self.reportDir)
 
 		#call function if -s arg
-		if args.shodan is True:
+		if self.args.shodan is True:
 			
 			shodanSearch = Shodansearch()
 
-			self.shodanResult = shodanSearch.run(args, self.lookup, self.reportDir, self.apiKeyDir)
+			self.shodanResult = shodanSearch.run(self.args, self.lookup, self.reportDir, self.apiKeyDir)
 
 		#call function if -p arg
-		if args.pastebinsearch is not None:
+		if self.args.pastebinsearch is not None:
 			pastebinScrape = Pastebinscrape()
-			self.pasteScrapeResult = pastebinScrape.run(args, self.lookup, self.reportDir, self.apiKeyDir)
+			self.pasteScrapeResult = pastebinScrape.run(self.args, self.lookup, self.reportDir, self.apiKeyDir)
 
 		# call function if -t arg
-		if args.theharvester is True:
+		if self.args.theharvester is True:
 			theHarvester = Theharvester()
-			self.harvesterResult = theHarvester.run(args, self.lookup, self.reportDir)
+			self.harvesterResult = theHarvester.run(self.args, self.lookup, self.reportDir)
 
 		#call function if -c arg 
-		if args.creds is True:
+		if self.args.creds is True:
 			credLeaks = Credleaks()
-			self.credResult = credLeaks.run(args, self.lookup, self.startTime, self.reportDir)
+			self.credResult = credLeaks.run(self.args, self.lookup, self.startTime, self.reportDir)
 
 
 			#call function if -S arg
-		if args.scraper is True:
+		if self.args.scraper is True:
 			web_scraper = Scraper()
-			self.scrapeResult = self.scrapeResults = web_scraper.run(args, self.lookup, self.reportDir, self.apiKeyDir)
+			self.scrapeResult = self.scrapeResults = web_scraper.run(self.args, self.lookup, self.reportDir, self.apiKeyDir)
 
 		#call function if -f arg
-		if args.foca is True:
+		if self.args.foca is True:
 			pyFoca = Pyfoca()
-			self.pyfocaResult = pyFoca.run(args, self.lookup, self.reportDir)
+			self.pyfocaResult = pyFoca.run(self.args, self.lookup, self.reportDir)
 			
 
 	#run the docx report. text files happen in the respective functions
-	def report(self, args):
+	def report(self):
 		
-		reportGen = Reportgen()
-		reportGen.run(args, self.reportDir, self.lookup, self.whoisResult, self.dnsResult, self.googleResult, self.shodanResult, self.pasteScrapeResult, self.harvesterResult, self.scrapeResult, self.credResult, self.pyfocaResult)
+		self.reportGen = reportGen()
+		self.reportGen.run(self.args, self.reportDir, self.lookup, self.whoisResult, self.dnsResult, self.googleResult, self.shodanResult, self.pasteScrapeResult, self.harvesterResult, self.scrapeResult, self.credResult, self.pyfocaResult)
 
 def main():
 
@@ -243,12 +256,12 @@ def main():
 	args = parser.parse_args()
 
 	#run functions with arguments passed
-	runAutosint = Autosint(args)
+	runAutosint = Autosint(args, parser)
 	runAutosint.clear()
-	runAutosint.banner(args)
-	runAutosint.checkargs(args)
-	runAutosint.runQueries(args)
-	runAutosint.report(args)
+	runAutosint.banner()
+	runAutosint.checkargs()
+	runAutosint.runQueries()
+	runAutosint.report()
 	
 if __name__ == '__main__':
     main()

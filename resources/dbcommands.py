@@ -29,7 +29,7 @@ class Database:
 		print('[i] Adding client [ %s ] to database:' % self.clientName)
 		c=self.clientName
 		#insert rows
-		print('ID___ Name___________ Contact____________  Date_______________')
+		print('ID___ Name___________ Domain____________  Date_______________')
 
 
 		#check to see if the client name exists, and if it does print it, and if it doesnt add it
