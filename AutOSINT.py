@@ -26,7 +26,8 @@ from modules.pyfoca import Pyfoca
 from modules.webscrape import Scraper
 
 from resources.reportgen import Reportgen
-from resources.dbcommands import Database
+from resources.dbcommands import DatabaseCommands
+from resources.setupDB import SetupDatabase
 
 #except ImportError as e:
 	#print('Error importing module(s) %s' % e)
@@ -42,6 +43,10 @@ class Autosint:
 		#defaults
 		self.lookupList = []
 		self.clientName = None
+		self.autOsintDB = 'AutoExt.db'
+		self.reportDir='./reports/'
+		self.apiKeyDir='./api_keys/'
+
 
 		#import args and parser objects from argparse
 		self.args = args
@@ -63,11 +68,6 @@ class Autosint:
 		#start timer
 		self.startTime=time.time()
 
-		#local dirs
-		self.reportDir='./reports/'
-		self.apiKeyDir='./api_keys/'
-		self.dbDir='./resources/'
-
 		#module assign
 		self.credLeaks = Credleaks()
 		self.pyFoca = Pyfoca()
@@ -82,7 +82,8 @@ class Autosint:
 
 		#resource assign
 		self.reportGen=Reportgen()
-		self.dbCommands=Database()
+		self.databaseCommands=DatabaseCommands(self.clientName)
+		self.setupDatabase=SetupDatabase()
 
 	
 	def clear(self):
@@ -113,9 +114,6 @@ class Autosint:
 
 		if not os.path.exists(self.apiKeyDir):
 			os.makedirs(self.apiKeyDir)
-
-		if not os.path.exists(self.dbDir):
-			os.makedirs(self.dbDir)
 
 		#set True on action store_true args if -a
 		if self.args.all is True:
@@ -181,6 +179,12 @@ class Autosint:
 
 		if self.args.verbose is True:
 			print '[+] Lookup Values: '+', '.join(self.lookupList)
+
+
+		#check for database, create if missing
+		if not os.path.exists(self.autOsintDB):
+			print('\n[!] Database missing, creating %s \n' % self.autOsintDB)
+			self.setupDatabase.createdatabase()
 
 	def runQueries(self):
 		#call function if -w arg
