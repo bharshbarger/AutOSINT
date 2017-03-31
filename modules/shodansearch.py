@@ -19,19 +19,16 @@ class Shodansearch():
 
 		#check for api key file
 		if not os.path.exists(apiKeyDir + 'shodan.key'):
-			print '[-] You are missing %sshodan.key' % apiKeyDir
-			shodanApiKey=raw_input("Please provide an API Key: ")
+			print '[-] You are missing %s/shodan.key' % apiKeyDir
+			#shodanApiKey=raw_input("Please provide an API Key: ")
 
 		#read API key
 		try:
-
-			if shodanApiKey is None:
-				with open(apiKeyDir + 'shodan.key', 'r') as apiKeyFile:
-					for k in apiKeyFile:
-						shodanApiKey = k
+			with open(apiKeyDir + 'shodan.key', 'r') as apiKeyFile:
+				for k in apiKeyFile:
+					shodanApiKey = k
 		except:
-			print '[-] Error opening %sshodan.key key file, skipping. ' % apiKeyDir
-			sys.exit(0)
+			print '[-] Error opening %s/shodan.key key file, skipping. ' % apiKeyDir
 
 		#invoke api with api key provided
 
