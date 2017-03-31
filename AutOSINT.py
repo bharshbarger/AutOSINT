@@ -39,8 +39,9 @@ class Autosint:
 		#version
 		self.version = 'v2.03.31.17'
 
-		#container for lookup values (domain or ip(ip not working rn))
-		self.lookup = []
+		#defaults
+		self.lookupList = []
+		self.clientName = None
 
 		#import args and parser objects from argparse
 		self.args = args
@@ -69,7 +70,6 @@ class Autosint:
 
 		#module assign
 		self.credLeaks = Credleaks()
-		self.reportGen=Reportgen()
 		self.pyFoca = Pyfoca()
 		self.web_scraper = Scraper()
 		self.theHarvester = Theharvester()
@@ -80,6 +80,9 @@ class Autosint:
 		self.hibpSearch = Haveibeenpwned()
 		self.whoisQuery = Whois()
 
+		#resource assign
+		self.reportGen=Reportgen()
+		self.dbCommands=Database()
 
 	
 	def clear(self):
@@ -164,68 +167,68 @@ class Autosint:
 		#check to see if an ip or domain name was entered
 		if self.args.domain is not None:
 			for d in self.args.domain:
-				self.lookup = self.args.domain
-				for l in self.lookup:
+				self.lookupList = self.args.domain
+				for l in self.lookupList:
 					if not os.path.exists(self.reportDir+'/'+l):
 						os.makedirs(self.reportDir+'/'+l)
 					
 		else:
 			for i in self.args.ipaddress:
-				self.lookup = self.args.ipaddress
-				for l in self.lookup:
+				self.lookupList = self.args.ipaddress
+				for l in self.lookupList:
 					if not os.path.exists(self.reportDir+'/'+l):
 						os.makedirs(self.reportDir+'/'+l)
 
 		if self.args.verbose is True:
-			print '[+] Lookup Values: '+', '.join(self.lookup)
+			print '[+] Lookup Values: '+', '.join(self.lookupList)
 
 	def runQueries(self):
 		#call function if -w arg
 		if self.args.whois is True:
-			self.whoisResult = self.whoisQuery.run(self.args, self.lookup, self.reportDir)
+			self.whoisResult = self.whoisQuery.run(self.args, self.lookupList, self.reportDir)
 
 		#call function if -n arg
 		if self.args.nslookup is True:
-			self.dnsResult = self.dnsQuery.run(self.args, self.lookup, self.reportDir)
+			self.dnsResult = self.dnsQuery.run(self.args, self.lookupList, self.reportDir)
 
 		#call function if -b arg
 		if self.args.hibp is True:
-			self.hibpResult = self.hibpSearch.run(self.args, self.lookup, self.reportDir)
+			self.hibpResult = self.hibpSearch.run(self.args, self.lookupList, self.reportDir)
 
 		#call function if -g arg
 		if self.args.googledork is not None:
-			self.googleResult = self.googleDork.run(self.args, self.lookup, self.reportDir)
+			self.googleResult = self.googleDork.run(self.args, self.lookupList, self.reportDir)
 
 		#call function if -s arg
 		if self.args.shodan is True:
-			self.shodanResult = self.shodanSearch.run(self.args, self.lookup, self.reportDir, self.apiKeyDir)
+			self.shodanResult = self.shodanSearch.run(self.args, self.lookupList, self.reportDir, self.apiKeyDir)
 
 		#call function if -p arg
 		if self.args.pastebinsearch is not None:
-			self.pasteScrapeResult = self.pastebinScrape.run(self.args, self.lookup, self.reportDir, self.apiKeyDir)
+			self.pasteScrapeResult = self.pastebinScrape.run(self.args, self.lookupList, self.reportDir, self.apiKeyDir)
 
 		# call function if -t arg
 		if self.args.theharvester is True:
-			self.harvesterResult = self.theHarvester.run(self.args, self.lookup, self.reportDir)
+			self.harvesterResult = self.theHarvester.run(self.args, self.lookupList, self.reportDir)
 
 		#call function if -c arg 
 		if self.args.creds is True:
-			self.credResult = self.credLeaks.run(self.args, self.lookup, self.startTime, self.reportDir)
+			self.credResult = self.credLeaks.run(self.args, self.lookupList, self.startTime, self.reportDir)
 
 
 			#call function if -S arg
 		if self.args.scraper is True:
-			self.scrapeResult = self.web_scraper.run(self.args, self.lookup, self.reportDir, self.apiKeyDir)
+			self.scrapeResult = self.web_scraper.run(self.args, self.lookupList, self.reportDir, self.apiKeyDir)
 
 		#call function if -f arg
 		if self.args.foca is True:
-			self.pyfocaResult = self.pyFoca.run(self.args, self.lookup, self.reportDir)
+			self.pyfocaResult = self.pyFoca.run(self.args, self.lookupList, self.reportDir)
 			
 
 	#run the docx report. text files happen in the respective functions
 	def report(self):
 		
-		self.reportGen.run(self.args, self.reportDir, self.lookup, self.whoisResult, self.dnsResult, self.googleResult, self.shodanResult, self.pasteScrapeResult, self.harvesterResult, self.scrapeResult, self.credResult, self.pyfocaResult)
+		self.reportGen.run(self.args, self.reportDir, self.lookupList, self.whoisResult, self.dnsResult, self.googleResult, self.shodanResult, self.pasteScrapeResult, self.harvesterResult, self.scrapeResult, self.credResult, self.pyfocaResult)
 
 def main():
 
