@@ -1,11 +1,9 @@
 # AutOSINT
-Tool to automate common osint tasks. Probably best run on Kali.
-
-
+Tool to automate common osint tasks. Probably best run on Kali, but tested on Debian 8.
 
 ## Dependencies: 
 
-###In your path: 
+### In your path: 
 whois, host, git, theHarvester(https://github.com/laramies/theHarvester), pyFoca(https://github.com/altjx/ipwn)
 
 ###python modules: 
@@ -13,14 +11,14 @@ python-docx, shodan,  google
 
 ### other files:
 
-a hashcat style pot file(hash:plain), and whatever open source dumps you already have in format user:hash
+A hashcat style pot file(hash:plain), and whatever open source dumps you already have in format user:hash
 
 ## Installation:
 
     $ git clone https://github.com/bharshbarger/AutOSINT.git
     $ chmod +x AutOSINT.py
 
-###(if missing modules:)
+### (if missing modules:)
 
 https://github.com/achillean/shodan-python
 
