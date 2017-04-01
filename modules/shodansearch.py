@@ -6,6 +6,10 @@ import sys
 
 class Shodansearch():
 
+
+	def __init__(self):
+		foo=''
+
 	def run(self, args, lookup, reportDir, apiKeyDir):
 
 
@@ -19,8 +23,17 @@ class Shodansearch():
 
 		#check for api key file
 		if not os.path.exists(apiKeyDir + 'shodan.key'):
-			print '[-] You are missing %s/shodan.key' % apiKeyDir
+			print ('[-] You are missing %s/shodan.key' % apiKeyDir)
+			
 			shodanApiKey=raw_input("Please provide an API Key: ")
+			
+			response=raw_input('Would you like to save this key to a file? (y/n): ')
+			if 'y' in response.lower():
+				with open(apiKeyDir + 'shodan.key', 'w') as apiKeyFile:
+					apiKeyFile.writelines(shodanApiKey)
+			else:
+				pass
+
 
 		#read API key
 		try:
@@ -28,7 +41,7 @@ class Shodansearch():
 				for k in apiKeyFile:
 					shodanApiKey = k
 		except:
-			print '[-] Error opening %s/shodan.key key file, skipping. ' % apiKeyDir
+			print ('[-] Error opening %s/shodan.key key file, skipping. ' % apiKeyDir)
 
 		#invoke api with api key provided
 
@@ -51,7 +64,7 @@ class Shodansearch():
 				#set results to api search of current lookup value
 				#https://shodan.readthedocs.io/en/latest/examples/basic-search.html
 				result = shodanApi.search(query="hostname:"+l)
-				print '[+] Shodan found: '+str(result['total'])+' hosts'
+				print ('[+] Shodan found: '+str(result['total'])+' hosts')
 				#for each result
 				for service in result['matches']:
 					if args.verbose is True:print str(service['ip_str'].encode('utf-8')+\
@@ -74,8 +87,8 @@ class Shodansearch():
 			#catch exceptions		
 			except shodan.APIError, e:
 				#print excepted error
-				print '[-] Shodan Error: %s' % e + ' Skipping!!!'
-				print '[!] You may need to specify an API key with -s <api key>'
+				print ('[-] Shodan Error: %s' % e + ' Skipping!!!')
+				print ('[!] You may need to specify an API key with -s <api key>')
 				return
 				
 		#write contents of shodanResult list. this needs formatted
