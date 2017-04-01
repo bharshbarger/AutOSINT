@@ -25,19 +25,19 @@ class Theharvester():
 
 				#run harvester with -b google on lookup
 				try:
-					print '[+] Running theHarvester -b google -d %s ' % l
+					print ('[+] Running theHarvester -b google -d %s ' % l)
 					harvesterGoogleCmd = subprocess.Popen(['theharvester', '-b', 'google', '-d', str(l), '-l', '500', '-h'], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
 				except:
-					print '[-] Error running theharvester. Make sure it is in your PATH and you are connected to the Internet'
+					print ('[-] Error running theharvester. Make sure it is in your PATH and you are connected to the Internet')
 					harvesterResult.append('Error running theHarvester')
 					continue
 
 				#run harvester with -b linkedin on lookup
 				try:
-					print '[+] Running theHarvester -b linkedin -d %s ' % l
+					print ('[+] Running theHarvester -b linkedin -d %s ' % l)
 					harvesterLinkedinCmd = subprocess.Popen(['theharvester', '-b', 'linkedin', '-d', str(l), '-l', '500', '-h'], stdout = subprocess.PIPE).communicate()[0].split('\r\n')
 				except:
-					print '[-] Error running theharvester. Make sure it is in your PATH and you are connected to the Internet'
+					print ('[-] Error running theharvester. Make sure it is in your PATH and you are connected to the Internet')
 					harvesterResult.append('Error running theHarvester\n')
 					continue
 
@@ -52,7 +52,7 @@ class Theharvester():
 					
 			#verbosity
 			if args.verbose is True:
-				for h in harvesterResult: print ''.join(h)
+				for h in harvesterResult:print (''.join(h))
 
 
 			#return list object
