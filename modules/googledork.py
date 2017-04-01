@@ -20,7 +20,7 @@ class Googledork():
 		#init lists
 		googleResult = []
 
-
+		print args.googledork
 		dorks = ' '.join(args.googledork)
 		#iterate the lookup list
 		for i, l in enumerate(lookup):

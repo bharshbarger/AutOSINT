@@ -124,19 +124,6 @@ class Autosint:
 			self.args.whois = True
 			self.args.scraper = True
 			self.args.shodan = True
-			self.args.googledork = True
-			self.args.pastebinsearch = True
-
-		if self.args.googledork is True:
-			if self.args.googledork is None:
-				print ('[-] You need to provide arguments for google dorking. e.g -g inurl:apsx')
-				sys.exit(0)
-
-		if self.args.pastebinsearch is True:		
-			if self.args.pastebinsearch is None:
-				print ('[-] You need to provide arguments for pastebin keywords. e.g -p password id_rsa')
-				sys.exit(0)
-
 			
 
 		#validate entered IP address? do we even care about IP address? i and d do the same shit
@@ -214,7 +201,11 @@ class Autosint:
 			self.hibpResult = self.hibpSearch.run(self.args, self.lookupList, self.reportDir)
 
 		#call function if -g arg
-		if self.args.googledork is not None:
+
+		if self.args.googledork is None:
+			print ('[!] Please provide arguments for google dorking. e.g -g inurl:apsx')
+			sys.exit(0)
+		else:
 			self.googleResult = self.googleDork.run(self.args, self.lookupList, self.reportDir)
 
 		#call function if -s arg
@@ -222,7 +213,10 @@ class Autosint:
 			self.shodanResult = self.shodanSearch.run(self.args, self.lookupList, self.reportDir, self.apiKeyDir)
 
 		#call function if -p arg
-		if self.args.pastebinsearch is not None:
+		if self.args.pastebinsearch is None:
+			print ('[!] Please provide arguments for pastebin keywords. e.g -p password id_rsa')
+			sys.exit(0)
+		else:
 			self.pasteScrapeResult = self.pastebinScrape.run(self.args, self.lookupList, self.reportDir, self.apiKeyDir)
 
 		# call function if -t arg
