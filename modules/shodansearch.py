@@ -8,7 +8,10 @@ class Shodansearch():
 
 
 	def __init__(self):
-		foo=''
+
+		#defaults
+		self.shodanResult = []
+		self.shodanApiKey = ''
 
 	def run(self, args, lookup, reportDir, apiKeyDir):
 
@@ -17,9 +20,7 @@ class Shodansearch():
 		#first if  https://shodan.readthedocs.io/en/latest/tutorial.html#connect-to-the-api
 		#else https://shodan.readthedocs.io/en/latest/tutorial.html#looking-up-a-host
 
-		#list that we'll return
-		shodanResult = []
-		shodanApiKey=''
+
 
 		#check for api key file
 		if not os.path.exists(apiKeyDir + 'shodan.key'):
@@ -59,21 +60,27 @@ class Shodansearch():
 
 
 			#user notification that something is happening
-			print '[+] Querying Shodan via API search for ' + l
+			print ('[+] Querying Shodan via API search for %s' % l)
 			try:
 				#set results to api search of current lookup value
 				#https://shodan.readthedocs.io/en/latest/examples/basic-search.html
 				result = shodanApi.search(query="hostname:"+l)
+				
 				print ('[+] Shodan found: '+str(result['total'])+' hosts')
+				
 				#for each result
 				for service in result['matches']:
-					if args.verbose is True:print str(service['ip_str'].encode('utf-8')+\
-						' ISP: '+service['isp'].encode('utf-8')+\
-						' Last seen: '+service['timestamp'].encode('utf-8'))
-					if args.verbose is True:print service['data'].encode('utf-8')
+					
+					if args.verbose is True:
+						
+						print (str(service['ip_str'].encode('utf-8')+\
+							' ISP: '+service['isp'].encode('utf-8')+\
+							' Last seen: '+service['timestamp'].encode('utf-8')))
+					
+					if args.verbose is True:print (service['data'].encode('utf-8'))
 
 					#append to shodanResult list
-					shodanResult.append(str(\
+					self.shodanResult.append(str(\
 						service['ip_str'].encode('utf-8')+\
 						'\nISP:'+service['isp'].encode('utf-8')+\
 						'\nLast seen:'+service['timestamp'].encode('utf-8'))+\
@@ -87,12 +94,12 @@ class Shodansearch():
 			#catch exceptions		
 			except shodan.APIError, e:
 				#print excepted error
-				print ('[-] Shodan Error: %s' % e + ' Skipping!!!')
+				print ('[-] Shodan Error: %s ' % e )
 				print ('[!] You may need to specify an API key with -s <api key>')
 				return
 				
 		#write contents of shodanResult list. this needs formatted
-		shodanFile.writelines('[+] Shodan found: '+str(result['total'])+' hosts\n\n')
-		shodanFile.writelines(shodanResult)
+		shodanFile.writelines('[+] Shodan found: %s hosts\n\n' % str(result['total']))
+		shodanFile.writelines(self.shodanResult)
 
-		return shodanResult
+		return self.shodanResult
