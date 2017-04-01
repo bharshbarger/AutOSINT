@@ -185,7 +185,7 @@ class Autosint:
 			sys.exit(0)
 		else:
 			#strip out specials in client name
-			self.clientName = re.sub('\W+',' ', self.args.client)
+			self.clientName = re.sub('\W+',' ', self.args.client).lower()
 
 
 		#check for database, create if missing

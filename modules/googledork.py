@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
+import requests, time
 from google import search
+from lxml import html
+
 
 # this could be GREATLY improved. need to implement the custom search api
 # GHDB password dorks https://www.exploit-db.com/google-hacking-database/9/
