@@ -16,7 +16,6 @@ A hashcat style pot file(hash:plain), and whatever open source dumps you already
 ## Installation:
 
     $ git clone https://github.com/bharshbarger/AutOSINT.git
-    $ chmod +x AutOSINT.py
 
 ### (if missing modules:)
 
