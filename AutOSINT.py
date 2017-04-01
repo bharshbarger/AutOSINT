@@ -95,13 +95,13 @@ class Autosint:
 			
 		#verbosity flag to print logo and args
 		if self.args.verbose is True:print( '''
-			    _         _    ___  ____ ___ _   _ _____ 
-			   / \  _   _| |_ / _ \/ ___|_ _| \ | |_   _|
-			  / _ \| | | | __| | | \___ \| ||  \| | | |  
-			 / ___ \ |_| | |_| |_| |___) | || |\  | | |  
-			/_/   \_\__,_|\__|\___/|____/___|_| \_| |_|\n''')
+    _         _    ___  ____ ___ _   _ _____ 
+   / \  _   _| |_ / _ \/ ___|_ _| \ | |_   _|
+  / _ \| | | | __| | | \___ \| ||  \| | | |  
+ / ___ \ |_| | |_| |_| |___) | || |\  | | |  
+/_/   \_\__,_|\__|\___/|____/___|_| \_| |_|\n''')
 
-		if self.args.verbose is True:print('AutOSINT.py %s, a way to do some automated OSINT tasks\n' % self.version)
+		if self.args.verbose is True:print('AutOSINT.py %s: A way to automate various OSINT tasks\n' % self.version)
 		if self.args.verbose is True:print(self.args)
 
 	
@@ -124,9 +124,15 @@ class Autosint:
 			self.args.whois = True
 			self.args.scraper = True
 			self.args.shodan = True
+			self.args.googledork = True
+			self.args.pastebinsearch = True
+
+		if self.args.googledork is True:
 			if self.args.googledork is None:
 				print ('[-] You need to provide arguments for google dorking. e.g -g inurl:apsx')
 				sys.exit(0)
+
+		if self.args.pastebinsearch is True:		
 			if self.args.pastebinsearch is None:
 				print ('[-] You need to provide arguments for pastebin keywords. e.g -p password id_rsa')
 				sys.exit(0)
@@ -227,8 +233,7 @@ class Autosint:
 		if self.args.creds is True:
 			self.credResult = self.credLeaks.run(self.args, self.lookupList, self.startTime, self.reportDir)
 
-
-			#call function if -S arg
+		#call function if -S arg
 		if self.args.scraper is True:
 			self.scrapeResult = self.web_scraper.run(self.args, self.lookupList, self.reportDir, self.apiKeyDir)
 
@@ -244,25 +249,74 @@ class Autosint:
 
 def main():
 
-	#https://docs.python.org/3/library/argparse.html
-	#set nargs back to + for multi search of domain or ip (still really buggy)
-	
 	parser = argparse.ArgumentParser()
-	parser.add_argument('-a', '--all', help = 'run All queries', action = 'store_true')
-	parser.add_argument('-b', '--hibp', help='Search haveibeenpwned.com for breaches related to a domain', action='store_true')
-	parser.add_argument('-C', '--client', help='Supply the client full name, i.e. foo.com would map to Foocorp')
-	parser.add_argument('-c', '--creds', help = 'Search local copies of credential dumps', action = 'store_true')
-	parser.add_argument('-d', '--domain', metavar='foo.com', nargs = 1, help = 'the Domain you want to search.')
-	parser.add_argument('-f', '--foca', help = 'invoke pyfoca', action = 'store_true')
-	parser.add_argument('-g', '--googledork', metavar='password id_rsa', nargs = '+',help = 'query Google for supplied args that are treated as a dork. i.e. -g password becomes a search for "password site:<domain>". Combine terms inside of quotes like "site:rapid7.com inurl:aspx" ')
-	parser.add_argument('-i', '--ipaddress', nargs = 1, help = 'the IP address you want to search. Must be a valid IP. ')
-	parser.add_argument('-n', '--nslookup',help = 'Name query DNS for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
-	parser.add_argument('-p', '--pastebinsearch', metavar='password id_rsa' ,nargs = '+', help = 'Search google for <arg> site:pastebin.com. Requires a pro account if you dont want to get blacklisted.')
-	parser.add_argument('-s', '--shodan', help = 'query Shodan, API keys stored in ./api_keys/', action='store_true')
-	parser.add_argument('-S', '--scraper', help = 'Scrape pastebin, github, indeed, more to be added. API keys stored in ./api_keys/', action = 'store_true')
-	parser.add_argument('-t', '--theharvester', help = 'Invoke theHarvester', action = 'store_true')
-	parser.add_argument('-v', '--verbose', help = 'Verbose', action = 'store_true')	
-	parser.add_argument('-w', '--whois', help = 'query Whois for supplied -d or -i values. Requires a -d or -i value', action = 'store_true')
+
+	
+	parser.add_argument('-a', '--all', \
+		help = 'run All queries', \
+		action = 'store_true')
+	
+	parser.add_argument('-b', '--hibp', \
+		help='Search haveibeenpwned.com for breaches related to a domain', \
+		action='store_true')
+	
+	parser.add_argument('-C', '--client', \
+		metavar='FooCorp',\
+		help='Supply the client full name.')
+	
+	parser.add_argument('-c', '--creds', \
+		help = 'Search local copies of credential dumps', \
+		action = 'store_true')
+	
+	parser.add_argument('-d', '--domain', \
+		metavar='foo.com', \
+		nargs = 1, \
+		help = 'the Domain you want to search.')
+	
+	parser.add_argument('-f', '--foca', \
+		help = 'invoke pyfoca', \
+		action = 'store_true')
+	
+	parser.add_argument('-g', '--googledork', \
+		metavar='password id_rsa', \
+		nargs = '+',\
+		help = 'query Google for supplied args that are treated as a dork. \
+		i.e. -g password becomes a search for "password site:<domain>". \
+		Combine terms inside of quotes like "site:rapid7.com inurl:aspx" ')
+	
+	parser.add_argument('-i', '--ipaddress', \
+		nargs = 1, \
+		help = 'The IP address you want to search. Must be a valid IP. ')
+	
+	parser.add_argument('-n', '--nslookup',\
+		help = 'Name query DNS for supplied -d or -i values. Requires a -d or -i value', \
+		action = 'store_true')
+	
+	parser.add_argument('-p', '--pastebinsearch', \
+		metavar='password id_rsa' ,\
+		nargs = '+', \
+		help = 'Search google for <arg> site:pastebin.com. \
+		Requires a pro account if you dont want to get blacklisted.')
+	
+	parser.add_argument('-s', '--shodan',\
+		help = 'query Shodan, API keys stored in ./api_keys/', \
+		action='store_true')
+	
+	parser.add_argument('-S', '--scraper', \
+		help = 'Scrape pastebin, github, indeed, more to be added. API keys stored in ./api_keys/', \
+		action = 'store_true')
+	
+	parser.add_argument('-t', '--theharvester', \
+		help = 'Invoke theHarvester', \
+		action = 'store_true')
+	
+	parser.add_argument('-v', '--verbose', \
+		help = 'Verbose', \
+		action = 'store_true')	
+	
+	parser.add_argument('-w', '--whois', \
+		help = 'query Whois for supplied -d or -i values. Requires a -d value', \
+		action = 'store_true')
 		
 	args = parser.parse_args()
 
