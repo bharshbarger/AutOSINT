@@ -26,41 +26,36 @@ class Googledork():
 			args.googledork = ['password']
 
 		else:
+			dorks = ' '.join(args.googledork)
+			#iterate the lookup list
+			for i, l in enumerate(lookup):
+				googleResult.append('Google query for: '+str(dorks)+ ' ' + 'site:'+str(l))
+				googleFile=open(reportDir+l+'/'+l+'_google_dork.txt','w')
 
-			for d in args.googledork:
-				if args.verbose is True:print '[+] Google dorking for: %s' % d
+				#show user whiat is being searched
+				print '[+] Google query ' + str(i + 1) + ' for "'+str(dorks)+' ' + 'site:'+str(l) + '"'
 				
-				#default to password if no arg
+				try:
+					#iterate url results from search of password(for now) and site:current list value
+					for url in search(str(dorks)+ ' ' + 'site:'+str(l), stop = 20):
+						
+						#append results together
+						googleResult.append(url)
 
-				#iterate the lookup list
-				for i, l in enumerate(lookup):
-					googleResult.append('Google query for: '+str(d)+ ' ' + 'site:'+str(l))
-					googleFile=open(reportDir+l+'/'+l+'_google_dork_'+str(d)+'.txt','w')
+						#rate limit to 1 per second
+						time.sleep(1)
+				#catch exceptions
+				except Exception:
+					pass
+		#iterate results
+		for r in googleResult:
+			#write results on newlines
+			googleFile.writelines(r + '\r\n')
 
-					#show user whiat is being searched
-					print '[+] Google query ' + str(i + 1) + ' for "'+str(d)+' ' + 'site:'+str(l) + '"'
-					
-					try:
-						#iterate url results from search of password(for now) and site:current list value
-						for url in search(str(d)+ ' ' + 'site:'+str(l), stop = 20):
-							
-							#append results together
-							googleResult.append(url)
-
-							#rate limit to 1 per second
-							time.sleep(1)
-					#catch exceptions
-					except Exception:
-						pass
-			#iterate results
-			for r in googleResult:
-				#write results on newlines
-				googleFile.writelines(r + '\r\n')
-
-			#verbosity flag
-			if args.verbose is True:
-				for r in googleResult: print ''.join(r)
-					
-			#return results list
-			return googleResult
-		
+		#verbosity flag
+		if args.verbose is True:
+			for r in googleResult: print ''.join(r)
+				
+		#return results list
+		return googleResult
+	
