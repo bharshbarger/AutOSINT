@@ -32,6 +32,22 @@ class SetupDatabase():
 				contact text,
 				client_id integer,
 				FOREIGN KEY(client_id) REFERENCES client(ID)''')
+			
+			c.execute('''CREATE TABLE users(
+				ID INTEGER PRIMARY KEY,
+				name text,
+				email text,
+				username text,
+				client_id integer,
+				FOREIGN KEY(client_id) REFERENCES client(ID)''')
+
+			c.execute('''CREATE TABLE creds(
+				ID INTEGER PRIMARY KEY,
+				username text,
+				hash text,
+				plain text,
+				client_id integer,
+				FOREIGN KEY(client_id) REFERENCES client(ID)''')
 
 
 

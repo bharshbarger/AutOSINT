@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-import requests
-
-
+import requests, time
+from google import search
+from lxml import html
 
 class Pastebinscrape():
 
@@ -35,8 +35,8 @@ class Pastebinscrape():
 					pasteUrlFile=open(reportDir+l+'/'+l+'_pastebin_urls.txt','w')
 					
 					#show user whiat is being searched
-					print '[+] Searching Pastebin for public pastes containing %s' % (l)
-					print '[i] May require a Pastebin Pro account for IP whitelisting'
+					print('[+] Searching Pastebin for public pastes containing %s' % (l))
+					print('[i] May require a Pastebin Pro account for IP whitelisting')
 
 
 					#run google query code
@@ -47,9 +47,9 @@ class Pastebinscrape():
 							time.sleep(1)
 							#append results together
 							scrapeURL.append(url)
-							if args.verbose is True:print '[+] Paste containing "%s" and "%s" found at: %s' (a,l,url)
-					except Exception:
-						print '[-] Error dorking pastebin URLs, skipping...'
+							if args.verbose is True:print ('[+] Paste containing "%s" and "%s" found at: %s' (a,l,url))
+					except Exception as e:
+						print('[-] Error dorking pastebin URLs: %s, skipping...' % e)
 						pasteScrapeResult.append('Error scraping Pastebin')
 						continue
 
@@ -59,7 +59,7 @@ class Pastebinscrape():
 							page = requests.get(u, headers = userAgent)
 							pasteUrlFile.writelines(u)
 						except:
-							print '[-] Error opening ' + u +':'
+							print ('[-] Error opening ' + u +':')
 							pasteScrapeResult.append('Error opening %s' % u)
 							continue
 
@@ -68,7 +68,7 @@ class Pastebinscrape():
 						tree = html.fromstring(page.content)
 
 						#if verbose spit out url, search term and domain searched
-						if args.verbose is True:print '[+] Looking for instances of %s and %s in %s \n' % (a,l,url)
+						if args.verbose is True:print ('[+] Looking for instances of %s and %s in %s \n' % (a,l,url))
 						#grab raw paste data from the textarea
 						rawPasteData = tree.xpath('//textarea[@class="paste_code"]/text()')
 

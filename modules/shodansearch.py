@@ -20,7 +20,7 @@ class Shodansearch():
 		#check for api key file
 		if not os.path.exists(apiKeyDir + 'shodan.key'):
 			print '[-] You are missing %s/shodan.key' % apiKeyDir
-			#shodanApiKey=raw_input("Please provide an API Key: ")
+			shodanApiKey=raw_input("Please provide an API Key: ")
 
 		#read API key
 		try:
