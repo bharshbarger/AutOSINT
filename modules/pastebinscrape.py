@@ -80,6 +80,7 @@ class Pastebinscrape():
 						if str(l) in line:
 							#if the argument search term is in the line
 							if dorks in line:
-								scrapedFile.writelines(line)
+								#print str(line)
+								scrapedFile.writelines(str(line.encode('utf8')))
 
 				return pasteScrapeResult

@@ -38,7 +38,7 @@ class Autosint:
 	def __init__(self, args, parser):
 
 		#version
-		self.version = 'v2.03.31.17'
+		self.version = 'v2.04.03.17'
 
 		#defaults
 		self.lookupList = []
