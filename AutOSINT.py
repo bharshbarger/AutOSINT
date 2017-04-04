@@ -11,7 +11,7 @@
 #try:
 
 #builtins
-import argparse, time, os, sys, re
+import argparse, time, os, sys, re, socket
 
 #AutOSINT module imports
 from modules.whois import Whois
