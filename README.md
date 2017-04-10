@@ -30,6 +30,10 @@ https://pypi.python.org/pypi/google
 https://python-docx.readthedocs.io/en/latest/user/install.html
 
     $ pip install python-docx
+    
+### Install all missing modules
+
+    $ pip install -U -r requirements.txt 
 
 ## Help 
     usage: AutOSINT.py [-h] [-a] [-b] [-C CLIENT] [-c] [-d foo.com] [-f]
