@@ -59,8 +59,8 @@ class Credleaks():
 							#look for a colon delimiter. dump files should be like email:hash. this of course assumes the creds file has emails as usernames
 							if ':' in line:
 								#split matches based on colons, sorta like 'awk -F :'. emails shouldnt have colons, right?
-								#also the dat HAS to require colons otherwise it will return an index error
-								matchedLine=line.split(":")
+								#split on colons and only maxsplit 1
+								matchedLine=line.split(":",1)
 								#take the split parts, 0 and 1 that are uname and hash, respectively
 								#place into a dict and strip the \r\n off of them
 								dumpDict[str(matchedLine[1].rstrip("\r\n"))]=str(matchedLine[0].rstrip("\r\n"))
