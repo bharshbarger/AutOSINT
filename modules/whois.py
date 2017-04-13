@@ -30,7 +30,7 @@ class Whois():
 
 			#write the file
 			for r in whoisResult:
-				whoisFile.writelines('\n'.join(r))
+				whoisFile.writelines(''.join(r)+'\n')
 			
 			#verbosity logic
 			if args.verbose is True:
