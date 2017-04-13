@@ -203,8 +203,11 @@ class Autosint:
 		#call function if -g arg
 
 		if self.args.googledork is None:
-			print ('[!] Please provide arguments for google dorking. e.g -g inurl:apsx')
-			sys.exit(0)
+			#print ('[!] Please provide arguments for google dorking. e.g -g inurl:apsx')
+			#sys.exit(0)
+
+			self.args.googledork = 'password'
+			print('[!] no google dork arg used, defaulting to "%s"' % self.args.googledork)
 		else:
 			self.googleResult = self.googleDork.run(self.args, self.lookupList, self.reportDir)
 

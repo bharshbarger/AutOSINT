@@ -59,6 +59,7 @@ class Pastebinscrape():
 					try:
 						page = requests.get(u, headers = userAgent)
 						pasteUrlFile.writelines(u+'\n')
+						pasteScrapeResult.append(u+'\n')
 					except:
 						print ('[-] Error opening ' + u +':')
 						pasteScrapeResult.append('Error opening %s' % u)
@@ -82,5 +83,5 @@ class Pastebinscrape():
 							if dorks in line:
 								#print str(line)
 								scrapedFile.writelines(str(line.encode('utf8')))
-
+				#print pasteScrapeResult
 				return pasteScrapeResult
