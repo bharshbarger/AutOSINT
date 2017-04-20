@@ -5,6 +5,7 @@ import urllib
 import json
 import requests
 from lxml import html
+from pprint import pprint
 
 class Scraper():
 
@@ -89,7 +90,7 @@ class Scraper():
 						#grab repo name from json items>index val>full_name
 						githubResult.append('[+] Github repositories matching '+(l.split('.')[0])+'\n\n')
 						for i,r in enumerate(gitJson['items']):
-							githubResult.append(gitJson['items'][i]['full_name']+'\n')
+							self.githubResult.append(gitJson['items'][i]['full_name']+'\n')
 
 					if name == 'virustotal':
 						if not os.path.exists(apiKeyDir + 'virus_total.key'):
@@ -101,21 +102,20 @@ class Scraper():
 							if 'y' in response.lower():
 								with open(apiKeyDir + 'virus_total.key', 'w') as apiKeyFile:
 									apiKeyFile.writelines(vtApiKey)
-							else:
-								pass
-
-						#read API key
-						try:
-							with open(apiKeyDir + 'virus_total.key', 'r') as apiKeyFile:
-								for k in apiKeyFile:
-									vtApiKey = k
-						except:
-							print ('[-] Error opening %svirus_total.key key file, skipping. ' % apiKeyDir)
-							continue
+						else:
+								
+							#read API key
+							try:
+								with open(apiKeyDir + 'virus_total.key', 'r') as apiKeyFile:
+									for k in apiKeyFile:
+										vtApiKey = k
+							except:
+								print ('[-] Error opening %svirus_total.key key file, skipping. ' % apiKeyDir)
+								continue
 
 
 						if args.verbose is True: print '[+] VirusTotal domain report for %s' % l
-						virusTotalResult.append('[+] VirusTotal domain report for %s' % l)
+						self.virusTotalResult.append('[+] VirusTotal domain report for %s' % l)
 
 						vtParams['domain']=l 
 						vtParams['apikey']=vtApiKey
@@ -125,15 +125,20 @@ class Scraper():
 
 						#read json response
 						vtJson = json.loads(response)
-						#virusTotalResult.append(vtJson)
+
+						if args.verbose is True: print json.dumps(vtJson, indent=4, sort_keys=True)
+
+						self.virusTotalResult.append(vtJson)
 
 
 
 				#write the file
-				for g in githubResult:
+				for g in self.githubResult:
 					scrapeFile.writelines(''.join(str(g.encode('utf-8'))))
-				for i in indeedResult:
+				for i in self.indeedResult:
 					scrapeFile.writelines(''.join(str(i.encode('utf-8'))))
+				for v in self.virusTotalResult:
+					scrapeFile.writelines(str(json.dumps(vtJson, indent=4, sort_keys=True)))
 						
 
 				scrapeResult.append(indeedResult)
