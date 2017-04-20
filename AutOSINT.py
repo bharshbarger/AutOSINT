@@ -38,7 +38,7 @@ class Autosint:
 	def __init__(self, args, parser):
 
 		#version
-		self.version = 'v2.04.03.17'
+		self.version = 'v2.04.19.17'
 
 		#defaults
 		self.lookupList = []
@@ -86,13 +86,12 @@ class Autosint:
 
 	
 	def clear(self):
-
+		
 		#clean up screen
 	    os.system('cls' if os.name == 'nt' else 'clear')
 
 
 	def banner(self):
-			
 		#verbosity flag to print logo and args
 		if self.args.verbose is True:print( '''
     _         _    ___  ____ ___ _   _ _____ 
@@ -206,8 +205,9 @@ class Autosint:
 			#print ('[!] Please provide arguments for google dorking. e.g -g inurl:apsx')
 			#sys.exit(0)
 
-			self.args.googledork = 'password'
-			print('[!] no google dork arg used, defaulting to "%s"' % self.args.googledork)
+			#self.args.googledork = 'password'
+			#print('[!] no google dork arg used, defaulting to "%s"' % self.args.googledork)
+			pass
 		else:
 			self.googleResult = self.googleDork.run(self.args, self.lookupList, self.reportDir)
 
@@ -217,8 +217,9 @@ class Autosint:
 
 		#call function if -p arg
 		if self.args.pastebinsearch is None:
-			print ('[!] Please provide arguments for pastebin keywords. e.g -p password id_rsa')
-			sys.exit(0)
+			#print ('[!] Please provide arguments for pastebin keywords. e.g -p password id_rsa')
+			#sys.exit(0)
+			pass
 		else:
 			self.pasteScrapeResult = self.pastebinScrape.run(self.args, self.lookupList, self.reportDir, self.apiKeyDir)
 
