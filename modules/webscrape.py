@@ -3,6 +3,8 @@
 import os
 import urllib
 import json
+import requests
+from lxml import html
 
 class Scraper():
 
@@ -31,7 +33,7 @@ class Scraper():
 			for i,l in enumerate(lookup):
 				scrapeFile=open(reportDir+l+'/'+l+'_scrape.txt','w')
 
-				print '[+] Scraping sites using '+ l
+				print ('[+] Scraping sites using %s' % l)
 				#http://www.indeed.com/jobs?as_and=ibm.com&as_phr=&as_any=&as_not=&as_ttl=&as_cmp=&jt=all&st=&salary=&radius=25&fromage=any&limit=500&sort=date&psf=advsrch
 				#init list and insert domain with tld stripped
 				#insert lookup value into static urls
@@ -53,8 +55,8 @@ class Scraper():
 						#http://docs.python-guide.org/en/latest/scenarios/scrape/
 						try:
 							ipage = requests.get(url, headers = userAgent)
-						except:
-							print '[-] Scraping error on ' + url +':'
+						except Exception as e:
+							print ('[-] Scraping error on %s: %s' %(url, e))
 							continue
 
 						#build html tree
@@ -77,8 +79,8 @@ class Scraper():
 						#http://docs.python-guide.org/en/latest/scenarios/scrape/
 						try:
 							gpage = requests.get(url, headers = userAgent)
-						except:
-							print '[-] Scraping error on ' + url +':'
+						except Exception as e:
+							print ('[-] Scraping error on %s: %s' %(url, e))
 							continue
 
 						#read json response
@@ -91,8 +93,16 @@ class Scraper():
 
 					if name == 'virustotal':
 						if not os.path.exists(apiKeyDir + 'virus_total.key'):
-							print '[-] You are missing %s/virus_total.key' % apiKeyDir
-							#vtApiKey=raw_input("Please provide an API Key: ")
+							print '[-] Missing %svirus_total.key' % apiKeyDir
+							
+							vtApiKey=raw_input("Please provide an API Key: ")
+			
+							response=raw_input('Would you like to save this key to a file? (y/n): ')
+							if 'y' in response.lower():
+								with open(apiKeyDir + 'virus_total.key', 'w') as apiKeyFile:
+									apiKeyFile.writelines(vtApiKey)
+							else:
+								pass
 
 						#read API key
 						try:
@@ -100,7 +110,7 @@ class Scraper():
 								for k in apiKeyFile:
 									vtApiKey = k
 						except:
-							print '[-] Error opening %s/virus_total.key key file, skipping. ' % apiKeyDir
+							print ('[-] Error opening %svirus_total.key key file, skipping. ' % apiKeyDir)
 							continue
 
 
@@ -131,7 +141,7 @@ class Scraper():
 
 				#verbosity logic
 				if args.verbose is True:
-					for gr in githubResult: print ''.join(gr.strip('\n'))
-					for ir in indeedResult: print ''.join(ir.strip('\n'))
+					for gr in githubResult: print (''.join(gr.strip('\n')))
+					for ir in indeedResult: print (''.join(ir.strip('\n')))
 
 			return scrapeResult
