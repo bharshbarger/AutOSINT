@@ -16,7 +16,7 @@ class Haveibeenpwned():
 		userAgent = {'user-agent': 'Pwnage Checker for AutOSINT'}
 		if args.hibp is True:
 			for i,l in enumerate(lookup):
-				print '[+] Searching haveibeenpwned.com for %s' % l
+				print '[+] Searching haveibeenpwned.com via API for %s' % l
 				scrapeFile=open(reportDir+l+'/'+l+'_haveibeenpwned.txt','w')
                                 #altered HIBP URL
 				url = 'https://haveibeenpwned.com/api/v2/breaches?domain=%s' % l
