@@ -7,7 +7,7 @@ class Theharvester():
     def __init__(self):
         #init lists
         self.theharvester_result = []
-        self.harvester_sources = 'google, linkedin'
+        self.harvester_sources = ['google', 'linkedin']
     
     def run(self, args, lookup, report_directory):
         """main function"""
@@ -17,8 +17,8 @@ class Theharvester():
             harvesterFile = open(report_directory+l+'/'+l+'_theharvester.txt', 'w')
             for source in self.harvester_sources:
                 try:
-                    print('[+] Running theHarvester -b google -d {} '.format(l))
-                    bash_command = subprocess.Popen(['theharvester', '-b', '{}'.format(source), '-d', str(l), '-l', '500', '-h'], stdout=subprocess.PIPE).communicate()[0].split('\r\n')
+                    print('[+] Running theHarvester -b {} -d {} '.format(source, l))
+                    bash_command = subprocess.Popen(['theharvester', '-b', '{}'.format(source), '-d', '{}'.format(str(l)), '-l', '500', '-h'], stdout=subprocess.PIPE).communicate()[0].split('\r\n')
                 except:
                     print('[-] Error running theHarvester. Make sure it is in your PATH and you are connected to the Internet')
                     self.theharvester_result.append('Error running theHarvester')

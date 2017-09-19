@@ -11,21 +11,21 @@ class Shodansearch():
     def __init__(self):
         """init"""
         #defaults
-        self.shodan_query_result = []
-        self.shodan_api_key = None
-        self.api_key_value = None
+
 
     def run(self, args, lookup, report_directory, api_key_directory):
         """main function"""
-    
+        self.shodan_query_result = []
+        self.shodan_api_key = None
+        self.api_key_value = None
         #first if  https://shodan.readthedocs.io/en/latest/tutorial.html#connect-to-the-api
         #else https://shodan.readthedocs.io/en/latest/tutorial.html#looking-up-a-host
 
-        #check for a stored api key
+        #check for a stored api key, if missing ask for it and if it should be saved
         if not os.path.exists(api_key_directory + 'shodan.key'):
             print('[!] You are missing {}shodan.key'.format(api_key_directory))
             self.api_key_value = getpass.getpass('[i] Please provide an API Key: ')
-            response = raw_input('[i] Would you like to save this key to a file? (y/n): ')
+            response = raw_input('[i] Would you like to save this key to a plaintext file? (y/n): ')
             
             if 'y' in response.lower():
                 with open(api_key_directory + 'shodan.key', 'w') as api_key_file:

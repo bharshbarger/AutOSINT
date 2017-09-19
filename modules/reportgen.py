@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""module to generate a docx report based on osint findings"""
 
 #https://python-docx.readthedocs.io/en/latest/user/text.html
 #https://python-docx.readthedocs.io/en/latest/user/quickstart.html
@@ -238,10 +239,11 @@ class Reportgen():
                 #content
                 paragraph = document.add_paragraph()
                 for sr in scrapeResult:
-                    runParagraph = paragraph.add_run(sr)
-                    font=runParagraph.font
-                    font.name = 'Arial'
-                    font.size = Pt(10)
+                    for line in sr:
+                        runParagraph = paragraph.add_run(line)
+                        font=runParagraph.font
+                        font.name = 'Arial'
+                        font.size = Pt(10)
 
                 document.add_page_break()
 

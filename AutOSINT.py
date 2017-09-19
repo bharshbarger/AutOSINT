@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""A tool to automate some OSINT tasks"""
+"""A tool to automate some OSINT tasks and put results into a docx report"""
 #By @arbitrary_code
 #https://github.com/bharshbarger/AutOSINT
 
@@ -27,14 +27,14 @@ from modules.theharvester import Theharvester
 from modules.credleaks import Credleaks
 from modules.pyfoca import Pyfoca
 from modules.webscrape import Scraper
-from resources.reportgen import Reportgen
+from modules.reportgen import Reportgen
 
 class Autosint:
     """autosint class"""
     def __init__(self, args, parser):
 
         #version
-        self.version = 'v2-09.18.17'
+        self.version = 'v2-09.19.17'
 
         #defaults
         self.lookup_list = []
@@ -99,7 +99,7 @@ class Autosint:
 /_/   \_\__,_|\__|\___/|____/___|_| \_| |_|\n''')
 
         if self.args.verbose is True:
-            print('AutOSINT.py {}: A way to automate various OSINT tasks\n'.format(self.version))
+            print('AutOSINT.py {}: A way to automate various OSINT tasks and place results into a docx\n'.format(self.version))
         if self.args.verbose is True:
             print(self.args)
 
@@ -120,7 +120,7 @@ class Autosint:
                         os.makedirs(self.report_directory+l)
 
         if self.args.verbose is True:
-            print '[+] Lookup Values: '+', '.join(self.lookup_list)
+            print ('[+] Lookup Values: '+', '.join(self.lookup_list))
 
         #check for a supplied client name and exit if none provided
         if self.args.client is None:
@@ -135,15 +135,34 @@ class Autosint:
 
     def run_queries(self):
         """invoke all the queries. assumption is that every run will want all data"""
+        
+        #verified
         self.whois_result = self.whois_query_module.run(self.args, self.lookup_list, self.report_directory)
+        
+        #verified
         self.dns_result = self.dns_query_module.run(self.args, self.lookup_list, self.report_directory)
+        
+        #needs work
         self.haveibeenpwned_result = self.haveibeenpwned_api_module.run(self.args, self.lookup_list, self.report_directory)
+        
+        #verified
         self.google_dork_result = self.google_dork_module.run(self.args, self.lookup_list, self.report_directory)
+        
+        #verified
         self.shodan_query_result = self.shodan_search_module.run(self.args, self.lookup_list, self.report_directory, self.api_key_directory)
+        
+        #verified
         self.pastebin_scrape_urls_result = self.pastebin_scrape_module.run(self.args, self.lookup_list, self.report_directory, self.api_key_directory)
+        
+        #verified
         self.theharvester_module_result = self.theharvester_module.run(self.args, self.lookup_list, self.report_directory)
+        
         self.cred_leak_search_result = self.cred_leaks_module.run(self.args, self.lookup_list, self.start_time, self.report_directory)
+        
+        #needs work
         self.scrape_result = self.web_scraper_module.run(self.args, self.lookup_list, self.report_directory, self.api_key_directory)
+        
+        #pyfoca has to be present
         self.pyfoca_module_result = self.pyfoca_module.run(self.args, self.lookup_list, self.report_directory)
             
     def report(self):
