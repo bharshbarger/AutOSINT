@@ -13,47 +13,46 @@ from lxml import html
 
 class Googledork():
 
-	def run(self, args, lookup, reportDir):
-		#need a default dork list
+    def run(self, args, lookup, reportDir):
+        #need a default dork list
 
-		#C58EA28C-18C0-4a97-9AF2-036E93DDAFB3 is string for open OWA attachments, for example
-		#init lists
-		googleResult = []
+        #C58EA28C-18C0-4a97-9AF2-036E93DDAFB3 is string for open OWA attachments, for example
+        #init lists
+        googleResult = []
+        dorks = args.dorks
+        #iterate the lookup list
+        for i, l in enumerate(lookup):
+            for d in dorks:
 
-		print args.googledork
-		dorks = ' '.join(args.googledork)
-		#iterate the lookup list
-		for i, l in enumerate(lookup):
+                googleResult.append('[i] Google query for: "%s site:%s"' % (str(d),str(l)))
 
-			googleResult.append('[i] Google query for: "%s site:%s"' % (str(dorks),str(l)))
+                googleFile=open(reportDir+l+'/'+l+'_google_dork.txt','w')
 
-			googleFile=open(reportDir+l+'/'+l+'_google_dork.txt','w')
+                #show user whiat is being searched
+                print ('[+] Google query %s for %s site:%s' % (str(i + 1),str(d),str(l)))
+                
+                try:
+                    #iterate url results from search of password(for now) and site:current list value
+                    for url in search(str(dorks)+' site:'+str(l), stop = 20):
+                    
+                        #append results together
+                        googleResult.append(url)
 
-			#show user whiat is being searched
-			print ('[+] Google query %s for %s site:%s' % (str(i + 1),str(dorks),str(l)))
-			
-			try:
-				#iterate url results from search of password(for now) and site:current list value
-				for url in search(str(dorks)+' site:'+str(l), stop = 20):
-				
-					#append results together
-					googleResult.append(url)
+                        #rate limit to 1 per second
+                        time.sleep(1)
+                #catch exceptions
+                except Exception as e:
+                    print ('[!] Error encountered: %s' % e)
+                    pass
+        #iterate results
+        for r in googleResult:
+            #write results on newlines
+            googleFile.writelines(r + '\r\n')
 
-					#rate limit to 1 per second
-					time.sleep(1)
-			#catch exceptions
-			except Exception as e:
-				print ('[!] Error encountered: %s' % e)
-				pass
-		#iterate results
-		for r in googleResult:
-			#write results on newlines
-			googleFile.writelines(r + '\r\n')
-
-		#verbosity flag
-		if args.verbose is True:
-			for r in googleResult: print (''.join(r))
-				
-		#return results list
-		return googleResult
-	
+        #verbosity flag
+        if args.verbose is True:
+            for r in googleResult: print (''.join(r))
+                
+        #return results list
+        return googleResult
+    

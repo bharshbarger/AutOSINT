@@ -82,7 +82,7 @@ class Shodansearch():
                 for ex in exploits:
                     shodanResult.append(str(ex))'''
             #catch exceptions       
-            except Shodan.shodan.APIError, e:
+            except Exception as e:
                 #print excepted error
                 print ('[-] Shodan Error: {} '.format(e))
                 print ('[!] You may need to specify an API key with -s <api key>')
