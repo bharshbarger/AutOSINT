@@ -151,10 +151,12 @@ class Reportgen():
                 font.color.rgb = RGBColor(0xe9,0x58,0x23)
                 #content
                 paragraph = document.add_paragraph()
-                runParagraph = paragraph.add_run(''.join(char))
-                font=runParagraph.font
-                font.name = 'Arial'
-                font.size = Pt(10)
+                for line in whoisResult:
+                    if ':' in line:
+                        runParagraph = paragraph.add_run(''.join(line)+'\n')
+                        font=runParagraph.font
+                        font.name = 'Arial'
+                        font.size = Pt(10)
                 document.add_page_break()
             
             #add dns data with header and break after end
