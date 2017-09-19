@@ -5,9 +5,10 @@
 #python-docx: https://pypi.python.org/pypi/python-docx
 #shodan: https://github.com/achillean/shodan-python
 #google: https://pypi.python.org/pypi/google, also installs beautifulsoup
+#pyPdf: https://pypi.python.org/pypi/pyPdf
 
 
 python-docx
 shodan
 google
-#pywhois
+pypdf
