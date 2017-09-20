@@ -137,30 +137,30 @@ class Autosint:
         """invoke all the queries. assumption is that every run will want all data"""
         
         #verified
-        self.whois_result = self.whois_query_module.run(self.args, self.lookup_list, self.report_directory)
+        #self.whois_result = self.whois_query_module.run(self.args, self.lookup_list, self.report_directory)
         
         #verified
-        self.dns_result = self.dns_query_module.run(self.args, self.lookup_list, self.report_directory)
+        #self.dns_result = self.dns_query_module.run(self.args, self.lookup_list, self.report_directory)
         
         #needs work
-        self.haveibeenpwned_result = self.haveibeenpwned_api_module.run(self.args, self.lookup_list, self.report_directory)
+        #self.haveibeenpwned_result = self.haveibeenpwned_api_module.run(self.args, self.lookup_list, self.report_directory)
         
         #verified
-        self.google_dork_result = self.google_dork_module.run(self.args, self.lookup_list, self.report_directory)
+        #self.google_dork_result = self.google_dork_module.run(self.args, self.lookup_list, self.report_directory)
         
         #verified
-        self.shodan_query_result = self.shodan_search_module.run(self.args, self.lookup_list, self.report_directory, self.api_key_directory)
+        #self.shodan_query_result = self.shodan_search_module.run(self.args, self.lookup_list, self.report_directory, self.api_key_directory)
         
         #verified
-        self.pastebin_scrape_urls_result = self.pastebin_scrape_module.run(self.args, self.lookup_list, self.report_directory, self.api_key_directory)
+        #self.pastebin_scrape_urls_result = self.pastebin_scrape_module.run(self.args, self.lookup_list, self.report_directory, self.api_key_directory)
         
         #verified
-        self.theharvester_module_result = self.theharvester_module.run(self.args, self.lookup_list, self.report_directory)
+        #self.theharvester_module_result = self.theharvester_module.run(self.args, self.lookup_list, self.report_directory)
         
-        self.cred_leak_search_result = self.cred_leaks_module.run(self.args, self.lookup_list, self.start_time, self.report_directory)
+        #self.cred_leak_search_result = self.cred_leaks_module.run(self.args, self.lookup_list, self.start_time, self.report_directory)
         
         #needs work
-        self.scrape_result = self.web_scraper_module.run(self.args, self.lookup_list, self.report_directory, self.api_key_directory)
+        #self.scrape_result = self.web_scraper_module.run(self.args, self.lookup_list, self.report_directory, self.api_key_directory)
         
         #pyfoca has to be present
         self.pyfoca_module_result = self.pyfoca_module.run(self.args, self.lookup_list, self.report_directory)
