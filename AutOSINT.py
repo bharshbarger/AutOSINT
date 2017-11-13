@@ -1,12 +1,11 @@
 #!/usr/bin/env python
-"""A tool to automate some OSINT tasks and put results into a docx report"""
-#By @arbitrary_code
-#https://github.com/bharshbarger/AutOSINT
-
-#Special thanks to:
-#@Beamr
-#@tatanus
-#unum alces!
+"""A tool to automate some OSINT tasks and put results into a docx report
+By @arbitrary_code
+https://github.com/bharshbarger/AutOSINT
+Special thanks to:
+@Beamr
+@tatanus
+unum alces!"""
 
 #builtins
 import argparse
@@ -29,9 +28,14 @@ from modules.pyfoca import Pyfoca
 from modules.webscrape import Scraper
 from modules.reportgen import Reportgen
 
-class Autosint:
+class Autosint(object):
     """autosint class"""
     def __init__(self, args, parser):
+        """start with arguments and parser objects"""
+
+        #import args and parser objects from argparse
+        self.args = args
+        self.parser = parser
 
         #version
         self.version = 'v2-09.19.17'
@@ -44,9 +48,7 @@ class Autosint:
         self.api_key_directory = './api_keys/'
         self.databse_directory = './database/'
 
-        #import args and parser objects from argparse
-        self.args = args
-        self.parser = parser
+
 
         #module results lists
         self.whois_result = []
@@ -137,30 +139,30 @@ class Autosint:
         """invoke all the queries. assumption is that every run will want all data"""
         
         #verified
-        #self.whois_result = self.whois_query_module.run(self.args, self.lookup_list, self.report_directory)
+        self.whois_result = self.whois_query_module.run(self.args, self.lookup_list, self.report_directory)
         
         #verified
-        #self.dns_result = self.dns_query_module.run(self.args, self.lookup_list, self.report_directory)
+        self.dns_result = self.dns_query_module.run(self.args, self.lookup_list, self.report_directory)
         
         #needs work
-        #self.haveibeenpwned_result = self.haveibeenpwned_api_module.run(self.args, self.lookup_list, self.report_directory)
+        self.haveibeenpwned_result = self.haveibeenpwned_api_module.run(self.args, self.lookup_list, self.report_directory)
         
         #verified
-        #self.google_dork_result = self.google_dork_module.run(self.args, self.lookup_list, self.report_directory)
+        self.google_dork_result = self.google_dork_module.run(self.args, self.lookup_list, self.report_directory)
         
         #verified
-        #self.shodan_query_result = self.shodan_search_module.run(self.args, self.lookup_list, self.report_directory, self.api_key_directory)
+        self.shodan_query_result = self.shodan_search_module.run(self.args, self.lookup_list, self.report_directory, self.api_key_directory)
         
         #verified
-        #self.pastebin_scrape_urls_result = self.pastebin_scrape_module.run(self.args, self.lookup_list, self.report_directory, self.api_key_directory)
+        self.pastebin_scrape_urls_result = self.pastebin_scrape_module.run(self.args, self.lookup_list, self.report_directory, self.api_key_directory)
         
         #verified
-        #self.theharvester_module_result = self.theharvester_module.run(self.args, self.lookup_list, self.report_directory)
+        self.theharvester_module_result = self.theharvester_module.run(self.args, self.lookup_list, self.report_directory)
         
-        #self.cred_leak_search_result = self.cred_leaks_module.run(self.args, self.lookup_list, self.start_time, self.report_directory)
+        self.cred_leak_search_result = self.cred_leaks_module.run(self.args, self.lookup_list, self.start_time, self.report_directory)
         
         #needs work
-        #self.scrape_result = self.web_scraper_module.run(self.args, self.lookup_list, self.report_directory, self.api_key_directory)
+        self.scrape_result = self.web_scraper_module.run(self.args, self.lookup_list, self.report_directory, self.api_key_directory)
         
         #pyfoca has to be present
         self.pyfoca_module_result = self.pyfoca_module.run(self.args, self.lookup_list, self.report_directory)

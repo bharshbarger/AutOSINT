@@ -295,4 +295,5 @@ class Reportgen(object):
 
             print('[+] Writing file: ./reports/{}/OSINT_{}_.docx'.format(l, l))
 
-            self.document.save(report_directory+l+'/'+l+'OSINT_%s_.docx' % l)
+            #saves to ./reports/domain.com/OSINT_domain.com_.docx
+            self.document.save(report_directory+'{}/OSINT_{}_.docx'.format(l, l))
